@@ -11,21 +11,49 @@
   <h1>Logo Match Cut Studio</h1>
 </header>
 
-<!-- 진행 단계 -->
-<nav id="steps">
-  <button class="step active" data-go="s1">1 · 업로드</button>
-  <button class="step" data-go="s2">2 · 프레임 추출</button>
-  <button class="step" data-go="s3">3 · 로고 분리</button>
-  <button class="step" data-go="s4">4 · 배경 적용</button>
-  <button class="step" data-go="s5">5 · 미리보기</button>
-  <button class="step" data-go="s6">6 · 내보내기</button>
-  <button class="step" data-go="s7">7 · 가공본 재조합</button>
+<!-- 진행 단계 (모드 선택 후 표시) -->
+<nav id="steps" hidden>
+  <button id="backToModes" class="step back" title="다른 방식 선택">← 처음</button>
+  <button class="step" data-go="s1"  data-label="업로드"></button>
+  <button class="step" data-go="s1b" data-label="로고 업로드"></button>
+  <button class="step" data-go="s2"  data-label="프레임 추출"></button>
+  <button class="step" data-go="s3"  data-label="로고 분리"></button>
+  <button class="step" data-go="s4"  data-label="배경 적용"></button>
+  <button class="step" data-go="s5"  data-label="미리보기"></button>
+  <button class="step" data-go="s6"  data-label="내보내기"></button>
+  <button class="step" data-go="s7"  data-label="가공본 재조합"></button>
 </nav>
 
 <main>
+  <!-- 0. 방식 선택 -->
+  <section id="s0" class="panel active">
+    <h2>무엇을 만들까요?</h2>
+    <p class="meta modeIntro">상황에 맞는 방식을 고르면 꼭 필요한 단계만 보여드려요. 언제든 ‘← 처음’으로 다시 바꿀 수 있어요.</p>
+    <div class="modeCards">
+      <button class="modeCard" data-mode="full">
+        <span class="mc-emoji">🎬</span>
+        <span class="mc-title">로고 매치컷 (전체)</span>
+        <span class="mc-desc">모션 영상을 프레임으로 나누고, 로고를 분리해 프레임마다 다른 배경을 합성합니다.</span>
+        <span class="mc-flow">영상 · 추출 · 분리 · 배경 · 미리보기 · 내보내기</span>
+      </button>
+      <button class="modeCard" data-mode="logo">
+        <span class="mc-emoji">✂️</span>
+        <span class="mc-title">배경 제거만 · 투명 로고 모션</span>
+        <span class="mc-desc">배경을 붙이지 않고, 원본 영상에서 흰 배경만 지운 투명 로고 모션 영상을 만듭니다.</span>
+        <span class="mc-flow">영상 · 추출 · 분리 · 미리보기 · 내보내기</span>
+      </button>
+      <button class="modeCard" data-mode="static">
+        <span class="mc-emoji">🖼️</span>
+        <span class="mc-title">정적 로고 + 배경 전환</span>
+        <span class="mc-desc">영상 없이, 로고 이미지 한 장을 올려 배경만 빠르게 전환하며 영상으로 만듭니다.</span>
+        <span class="mc-flow">로고 업로드 · 배경 · 미리보기 · 내보내기</span>
+      </button>
+    </div>
+  </section>
+
   <!-- 1. 업로드 -->
-  <section id="s1" class="panel active">
-    <h2>1. 로고 모션 영상 업로드</h2>
+  <section id="s1" class="panel">
+    <h2>로고 모션 영상 업로드</h2>
     <div class="drop" id="videoDrop">
       <input type="file" id="videoInput" accept="video/*">
       <span class="drophint">또는 여기로 영상을 드래그 앤 드롭</span>
@@ -34,9 +62,23 @@
     <p id="videoMeta" class="meta"></p>
   </section>
 
+  <!-- 1b. 정적 로고 업로드 (static 모드) -->
+  <section id="s1b" class="panel">
+    <h2>로고 이미지 업로드</h2>
+    <div class="hint">
+      배경이 <b>투명한 PNG</b> 로고를 권장합니다. 흰 배경 이미지를 올리면 흰 배경을 <b>자동으로 제거</b>해 드려요.
+    </div>
+    <div class="drop" id="logoImgDrop">
+      <input type="file" id="logoImgInput" accept="image/*">
+      <span class="drophint">또는 여기로 로고 이미지를 드래그 앤 드롭</span>
+    </div>
+    <div class="checker" id="staticLogoWrap"><canvas id="staticLogoPreview"></canvas></div>
+    <p id="logoImgMeta" class="meta"></p>
+  </section>
+
   <!-- 2. 프레임 추출 -->
   <section id="s2" class="panel">
-    <h2>2. 프레임 추출</h2>
+    <h2>프레임 추출</h2>
     <div class="hint">
       💡 <b>프레임 수 조절 팁</b><br>
       · <b>프레임을 적게</b> 뽑으려면 → FPS를 <b>낮추세요</b> (예: 6~8fps). 용량·작업량이 줄어듭니다.<br>
@@ -64,7 +106,7 @@
 
   <!-- 3. 로고 분리 -->
   <section id="s3" class="panel">
-    <h2>3. 흰 배경 제거 / 로고 분리</h2>
+    <h2>흰 배경 제거 / 로고 분리</h2>
     <div class="row">
       <label>분리 방식
         <select id="sepMode">
@@ -106,7 +148,7 @@
 
   <!-- 4. 배경 적용 -->
   <section id="s4" class="panel">
-    <h2>4. 배경 이미지 적용</h2>
+    <h2>배경 이미지 적용</h2>
     <div class="drop" id="bgDrop">
       <input type="file" id="bgInput" accept="image/*" multiple>
       <span class="drophint">또는 여기로 배경 이미지들을 드래그 앤 드롭</span>
@@ -127,7 +169,7 @@
 
   <!-- 5. 미리보기 -->
   <section id="s5" class="panel">
-    <h2>5. 합성 미리보기 · 레이아웃</h2>
+    <h2>합성 미리보기 · 레이아웃</h2>
     <div class="hint">
       💡 <b>재생 FPS</b> — 1초에 몇 장을 보여줄지 정합니다. <b>높이면</b> 영상이 빠르고 부드럽게, <b>낮추면</b> 느리고 뚝뚝 끊기게 재생됩니다. 내보내는 영상 속도에도 그대로 반영됩니다.<br>
       💡 <b>배경 전환 간격</b> — 배경을 <b>몇 프레임마다</b> 바꿀지 정합니다. <b>작을수록</b> 배경이 자주 바뀌어 빠른 매치컷이 되고, <b>클수록</b> 한 배경이 오래 유지됩니다. (4단계 '순서대로 자동 배치'에 적용)<br>
@@ -186,7 +228,7 @@
 
   <!-- 6. 내보내기 -->
   <section id="s6" class="panel">
-    <h2>6. 내보내기</h2>
+    <h2>내보내기</h2>
     <div class="row">
       <label>출력 내용
         <select id="exportContent">
@@ -221,7 +263,7 @@
 
   <!-- 7. 가공본 재조합 -->
   <section id="s7" class="panel">
-    <h2>7. 외부 가공 프레임 재조합</h2>
+    <h2>외부 가공 프레임 재조합</h2>
     <p class="meta">파일명 순서(자연 정렬)로 자동 배열됩니다. 예: frame_0001.png … frame_0002.png</p>
     <div class="drop" id="processedDrop">
       <input type="file" id="processedInput" accept="image/*" multiple>

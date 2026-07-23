@@ -10,10 +10,44 @@ const state = {
   backgrounds: [],   // [ImageBitmap/HTMLImageElement]
   manualBg: [],      // [bgIndex|null] per frame, for manual assignment
   processed: [],     // [{name, img}] re-imported external frames
+  staticLogo: null,  // single tint-ready logo canvas for the "static" mode
 };
 
+/* ---------- mode selection: show only the steps a given goal needs ---------- */
+const MODE_STEPS = {
+  full:   ["s1", "s2", "s3", "s4", "s5", "s6", "s7"], // 영상→추출→분리→배경→미리보기→내보내기
+  logo:   ["s1", "s2", "s3", "s5", "s6"],             // 배경 없이 투명 로고 모션만
+  static: ["s1b", "s4", "s5", "s6"],                  // 정적 로고 한 장 + 배경 전환
+};
+let mode = null;
+
+function applyMode(m) {
+  mode = m;
+  const steps = MODE_STEPS[m];
+  document.querySelectorAll(".step[data-go]").forEach((b) => {
+    const i = steps.indexOf(b.dataset.go);
+    b.hidden = i < 0;
+    if (i >= 0) b.textContent = `${i + 1} · ${b.dataset.label}`;
+  });
+  $("steps").hidden = false;
+  $("exportContent").value = m === "logo" ? "logo" : "composite"; // 배경제거 모드 기본값
+  showStep(steps[0]);
+  updateExportInfo();
+}
+
+function showLanding() {
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+  document.querySelectorAll(".step").forEach((b) => b.classList.remove("active", "guide"));
+  $("s0").classList.add("active");
+  $("steps").hidden = true;
+}
+
+document.querySelectorAll(".modeCard").forEach((b) =>
+  b.addEventListener("click", () => applyMode(b.dataset.mode)));
+$("backToModes").addEventListener("click", showLanding);
+
 /* ---------- step navigation ---------- */
-document.querySelectorAll(".step").forEach((btn) => {
+document.querySelectorAll(".step[data-go]").forEach((btn) => {
   btn.addEventListener("click", () => showStep(btn.dataset.go, btn));
 });
 function showStep(id, btn) {
@@ -25,10 +59,18 @@ function showStep(id, btn) {
   tab.classList.remove("guide"); // visiting the tab clears its "go here next" hint
 }
 
-/* pulse the next tab so non-experts know where to go after finishing a step */
+/* pulse the next tab so non-experts know where to go after finishing a step.
+   if the requested step isn't in the current mode, guide to the next visible one. */
 function guideTo(step) {
   document.querySelectorAll(".step.guide").forEach((s) => s.classList.remove("guide"));
-  const t = document.querySelector(`[data-go="${step}"]`);
+  const steps = MODE_STEPS[mode] || [];
+  let target = step;
+  if (!steps.includes(target)) {
+    const active = document.querySelector(".step.active")?.dataset.go;
+    target = steps[steps.indexOf(active) + 1];
+  }
+  if (!target) return;
+  const t = document.querySelector(`[data-go="${target}"]`);
   if (t && !t.classList.contains("active")) t.classList.add("guide");
 }
 
@@ -58,6 +100,46 @@ function loadVideoFile(file) {
 }
 $("videoInput").addEventListener("change", (e) => loadVideoFile(e.target.files[0]));
 makeDrop("videoDrop", (files) => loadVideoFile(files[0]));
+
+/* ---------- 1b. static logo upload (static mode) ---------- */
+function loadStaticLogo(file) {
+  if (!file) return;
+  loadImage(URL.createObjectURL(file)).then((img) => {
+    state.staticLogo = prepareStaticLogo(img);
+    drawInto($("staticLogoPreview"), state.staticLogo);
+    $("logoImgMeta").textContent = `${img.width}×${img.height}px`;
+    buildStaticFrames();
+    guideTo("s4");
+  });
+}
+$("logoImgInput").addEventListener("change", (e) => loadStaticLogo(e.target.files[0]));
+makeDrop("logoImgDrop", (files) => loadStaticLogo(files[0]));
+
+/* accept the image as-is if it already has transparency; otherwise strip its white bg */
+function prepareStaticLogo(img) {
+  const c = document.createElement("canvas");
+  c.width = img.width; c.height = img.height;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  const d = ctx.getImageData(0, 0, c.width, c.height).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] < 250) return c; // already transparent
+  return separate(c, { mode: "matte", threshold: 235, feather: 40, forceBlack: false });
+}
+
+/* static mode has no motion: fake N frames of the same logo so the compositor can
+   sequence backgrounds. N = backgrounds × 전환 간격, so each bg lingers that long. */
+function buildStaticFrames() {
+  if (mode !== "static" || !state.staticLogo) return;
+  const logo = state.staticLogo;
+  const n = Math.max(1, state.backgrounds.length) * bgHold();
+  state.frames = Array.from({ length: n }, () => ({ canvas: logo, time: 0 }));
+  state.separated = state.frames.map(() => logo); // already tint-ready
+  state.manualBg = [];
+  ["playBtn", "saveFramesBtn", "exportVideoBtn"].forEach((id) => { $(id).disabled = false; });
+  syncScrub();
+  cur = Math.min(cur, n - 1);
+  drawPreview(cur);
+}
 
 /* frame-extraction mode: only the selected mode's value input is editable */
 function syncExMode() {
@@ -258,6 +340,7 @@ async function addBackgrounds(files) {
   }
   renderBgList();
   buildManualAssign();
+  buildStaticFrames();
   if (state.backgrounds.length) guideTo("s5");
 }
 
@@ -268,6 +351,7 @@ function removeBackground(k) {
     v == null ? null : v === k ? null : v > k ? v - 1 : v);
   renderBgList();
   buildManualAssign();
+  buildStaticFrames();
   if (state.frames.length) drawPreview(cur);
 }
 $("bgInput").addEventListener("change", (e) => addBackgrounds(e.target.files));
@@ -608,7 +692,10 @@ $("exportProcessedBtn").addEventListener("click", () => {
     if (state.frames.length) drawPreview(cur);
   }));
 
-$("bgSwitch").addEventListener("input", () => { if (state.frames.length) drawPreview(cur); });
+$("bgSwitch").addEventListener("input", () => {
+  if (mode === "static") buildStaticFrames();
+  else if (state.frames.length) drawPreview(cur);
+});
 
 /* 9-point alignment grid (Figma-style) */
 $("alignGrid").addEventListener("click", (e) => {

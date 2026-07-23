@@ -34,6 +34,7 @@ header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02e
   padding: 16px 24px; position: sticky; top: 0; z-index: 10;
   background: var(--bg); max-width: 1200px; margin: 0 auto;
 }
+#steps[hidden] { display: none; } /* attribute alone loses to #steps display:flex */
 .step {
   background: var(--card); color: var(--sub); border: none;
   padding: 9px 16px; border-radius: 999px; cursor: pointer; font-size: 14px;
@@ -166,6 +167,25 @@ input[type=color] {
   border-radius: 8px; background: #fff; cursor: pointer;
 }
 
+/* ---------- mode selection landing ---------- */
+.step.back { background: transparent; color: var(--muted); font-weight: 500; }
+.step.back:hover { background: #e9edf2; color: var(--sub); }
+.modeIntro { margin: -12px 0 24px; }
+.modeCards { display: flex; gap: 16px; flex-wrap: wrap; }
+.modeCard {
+  flex: 1 1 240px; text-align: left; cursor: pointer;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 22px; display: flex; flex-direction: column; gap: 8px;
+  font-family: inherit; transition: all .12s;
+}
+.modeCard:hover { border-color: var(--accent); background: var(--accent-weak); transform: translateY(-2px); }
+.mc-emoji { font-size: 30px; }
+.mc-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.mc-desc { font-size: 14px; color: var(--sub); line-height: 1.6; }
+.mc-flow { font-size: 12px; color: var(--muted); margin-top: 4px; }
+#staticLogoWrap { display: inline-block; margin: 12px 0; }
+#staticLogoPreview { max-height: 40vh; background: transparent; }
+
 /* ---------- mobile ---------- */
 @media (max-width: 640px) {
   header { padding: 18px 16px 6px; }
@@ -191,4 +211,6 @@ input[type=color] {
   .previewPair { gap: 12px; }
   .previewPair > div { flex: 1 1 100%; }
   .hint { padding: 13px 14px; font-size: 13px; }
+  .modeCards { flex-direction: column; gap: 12px; }
+  .modeCard { padding: 18px; }
 }

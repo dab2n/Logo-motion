@@ -145,3 +145,23 @@ video, canvas { max-width: 100%; background: #000; border-radius: 16px; display:
   display: flex; align-items: center; justify-content: center;
 }
 .delbtn:hover { background: var(--accent); }
+
+.align-grid {
+  display: grid; grid-template-columns: repeat(3, 24px); grid-template-rows: repeat(3, 24px); gap: 3px;
+}
+.align-grid button {
+  border: 1px solid var(--line); background: #fff; border-radius: 5px; cursor: pointer;
+  padding: 0; position: relative;
+}
+.align-grid button::after {
+  content: ""; position: absolute; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted); top: 50%; left: 50%; transform: translate(-50%, -50%);
+}
+.align-grid button:hover { border-color: var(--accent); }
+.align-grid button.on { border-color: var(--accent); background: var(--accent-weak); }
+.align-grid button.on::after { background: var(--accent); }
+
+input[type=color] {
+  width: 40px; height: 34px; padding: 2px; border: 1px solid var(--line);
+  border-radius: 8px; background: #fff; cursor: pointer;
+}

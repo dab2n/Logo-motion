@@ -147,8 +147,32 @@
       <span id="logoScaleVal">100%</span>
     </div>
     <div class="row">
-      <label>로고 가로 위치 <input type="range" id="logoX" min="-50" max="50" value="0"></label>
-      <label>로고 세로 위치 <input type="range" id="logoY" min="-50" max="50" value="0"></label>
+      <label>로고 정렬</label>
+      <div id="alignGrid" class="align-grid" title="9방향 정렬">
+        <button data-h="left" data-v="top"></button>
+        <button data-h="center" data-v="top"></button>
+        <button data-h="right" data-v="top"></button>
+        <button data-h="left" data-v="middle"></button>
+        <button data-h="center" data-v="middle" class="on"></button>
+        <button data-h="right" data-v="middle"></button>
+        <button data-h="left" data-v="bottom"></button>
+        <button data-h="center" data-v="bottom"></button>
+        <button data-h="right" data-v="bottom"></button>
+      </div>
+      <label>미세 조정 X <input type="range" id="logoX" min="-50" max="50" value="0"></label>
+      <label>Y <input type="range" id="logoY" min="-50" max="50" value="0"></label>
+    </div>
+    <div class="row">
+      <label>로고 색상
+        <select id="logoColorMode">
+          <option value="auto">자동 (배경 명도 대비)</option>
+          <option value="black">검정</option>
+          <option value="white">흰색</option>
+          <option value="custom">사용자 지정</option>
+        </select>
+      </label>
+      <input type="color" id="logoColorPick" value="#000000" hidden>
+      <span class="meta">※ 색상 변경은 3단계에서 로고를 분리해야 적용됩니다.</span>
     </div>
     <canvas id="previewCanvas"></canvas>
     <div class="row controls">
@@ -186,8 +210,10 @@
           <option value="max">최고</option>
         </select>
       </label>
+      <label>분량(초) <input type="number" id="exportDuration" min="0" step="0.5" placeholder="원본"></label>
     </div>
     <p id="exportInfo" class="meta"></p>
+    <p class="meta">분량을 지정하면 프레임을 <b>루프</b>해 채우거나, 넘치면 <b>잘라서</b> 그 길이에 맞춥니다. (WebM 영상에만 적용)</p>
     <button id="saveFramesBtn" class="primary" disabled>프레임 일괄 저장 (ZIP)</button>
     <button id="exportVideoBtn" class="primary" disabled>영상으로 내보내기 (WebM)</button>
     <p id="exportStatus" class="meta"></p>

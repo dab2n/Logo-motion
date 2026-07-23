@@ -346,16 +346,53 @@ function composite(ctx, i, W, H) {
   drawLogoOn(ctx, i, W, H);
 }
 
-/* place the logo with the chosen size & position (contain-fit, then scaled) */
+/* place the logo with the chosen size, alignment (9-point) + fine nudge */
+const align = { h: "center", v: "middle" };
+const AX = { left: 0, center: 0.5, right: 1 };
+const AY = { top: 0, middle: 0.5, bottom: 1 };
+
 function drawLogoOn(ctx, i, W, H) {
   const logo = logoFor(i);
   if (!logo) return;
   const s = (Number($("logoScale").value) || 100) / 100;
   const base = Math.min(W / logo.width, H / logo.height);
   const lw = logo.width * base * s, lh = logo.height * base * s;
-  const x = (W - lw) / 2 + (Number($("logoX").value) || 0) / 100 * W;
-  const y = (H - lh) / 2 + (Number($("logoY").value) || 0) / 100 * H;
-  ctx.drawImage(logo, x, y, lw, lh);
+  const x = AX[align.h] * (W - lw) + (Number($("logoX").value) || 0) / 100 * W;
+  const y = AY[align.v] * (H - lh) + (Number($("logoY").value) || 0) / 100 * H;
+  ctx.drawImage(paintLogo(logo, i), x, y, lw, lh);
+}
+
+/* recolor the separated logo (alpha matte) to the chosen or auto-contrast color */
+function paintLogo(logo, i) {
+  if (!state.separated[i]) return logo; // needs an alpha matte to recolor
+  return tintedLogo(logo, logoColor(i));
+}
+function tintedLogo(src, color) {
+  const c = document.createElement("canvas"); c.width = src.width; c.height = src.height;
+  const x = c.getContext("2d");
+  x.drawImage(src, 0, 0);
+  x.globalCompositeOperation = "source-in"; // keep alpha, replace color
+  x.fillStyle = color; x.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+function logoColor(i) {
+  const m = $("logoColorMode").value;
+  if (m === "black") return "#000";
+  if (m === "white") return "#fff";
+  if (m === "custom") return $("logoColorPick").value;
+  const bg = bgForFrame(i); // auto: pick black/white for contrast with the background
+  if (!bg) return "#000";
+  return bgMeanLuma(bg) < 128 ? "#fff" : "#000";
+}
+const lumaCache = new Map();
+function bgMeanLuma(img) {
+  if (lumaCache.has(img)) return lumaCache.get(img);
+  const s = Math.min(1, 64 / Math.max(img.width, img.height)); // downscale for speed
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(img.width * s));
+  c.height = Math.max(1, Math.round(img.height * s));
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  const v = meanLuma(c); lumaCache.set(img, v); return v;
 }
 
 function drawCover(ctx, img, W, H) {
@@ -460,7 +497,11 @@ $("exportVideoBtn").addEventListener("click", () => {
   if (!state.frames.length) return alert("먼저 프레임을 추출하세요.");
   const content = $("exportContent").value;
   const fps = Number($("playFps").value);
-  recordFrames(state.frames.length, fps, (ctx, i, W, H) => {
+  const total = state.frames.length;
+  const dur = Number($("exportDuration").value) || 0;
+  const count = dur > 0 ? Math.round(dur * fps) : total; // loop to fill / cut to fit
+  recordFrames(count, fps, (ctx, j, W, H) => {
+    const i = j % total;
     if (content === "logo") { ctx.clearRect(0, 0, W, H); drawLogoOn(ctx, i, W, H); }
     else composite(ctx, i, W, H);
   }, frameSize(), $("exportStatus"), "logo-match-cut.webm", BITRATE[$("exportQuality").value]);
@@ -569,11 +610,35 @@ $("exportProcessedBtn").addEventListener("click", () => {
 
 $("bgSwitch").addEventListener("input", () => { if (state.frames.length) drawPreview(cur); });
 
-/* ---------- export size/quality info ---------- */
+/* 9-point alignment grid (Figma-style) */
+$("alignGrid").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  align.h = b.dataset.h; align.v = b.dataset.v;
+  $("alignGrid").querySelectorAll("button").forEach((x) => x.classList.remove("on"));
+  b.classList.add("on");
+  if (state.frames.length) drawPreview(cur);
+});
+
+/* logo color tool */
+$("logoColorMode").addEventListener("change", () => {
+  $("logoColorPick").hidden = $("logoColorMode").value !== "custom";
+  if (state.frames.length) drawPreview(cur);
+});
+$("logoColorPick").addEventListener("input", () => { if (state.frames.length) drawPreview(cur); });
+
+/* ---------- export size/quality/duration info ---------- */
 function updateExportInfo() {
   const { W, H } = frameSize();
   const mbps = { std: 8, high: 16, max: 32 }[$("exportQuality").value];
-  $("exportInfo").textContent = `출력 크기: ${W}×${H}px · 비트레이트 약 ${mbps}Mbps`;
+  const total = state.frames.length;
+  const fps = Number($("playFps").value) || 12;
+  const dur = Number($("exportDuration").value) || 0;
+  const count = total ? (dur > 0 ? Math.round(dur * fps) : total) : 0;
+  $("exportInfo").textContent =
+    `출력 ${W}×${H}px · ${mbps}Mbps · ${count}프레임 · 약 ${(count / fps).toFixed(1)}초`;
 }
-["exportRes", "exportQuality"].forEach((id) => $(id).addEventListener("change", updateExportInfo));
+["exportRes", "exportQuality", "exportDuration", "playFps"].forEach((id) => {
+  $(id).addEventListener("input", updateExportInfo);
+  $(id).addEventListener("change", updateExportInfo);
+});
 updateExportInfo();

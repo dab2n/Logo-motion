@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logo Match Cut Studio</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Logo Match Cut Studio</h1>
+  <p class="sub">업로드 → 프레임 추출 → 로고 분리 → 배경 적용 → 미리보기 → 내보내기</p>
+</header>
+
+<!-- 진행 단계 -->
+<nav id="steps">
+  <button class="step active" data-go="s1">1 · 업로드</button>
+  <button class="step" data-go="s2">2 · 프레임 추출</button>
+  <button class="step" data-go="s3">3 · 로고 분리</button>
+  <button class="step" data-go="s4">4 · 배경 적용</button>
+  <button class="step" data-go="s5">5 · 미리보기</button>
+  <button class="step" data-go="s6">6 · 내보내기</button>
+  <button class="step" data-go="s7">7 · 가공본 재조합</button>
+</nav>
+
+<main>
+  <!-- 1. 업로드 -->
+  <section id="s1" class="panel active">
+    <h2>1. 로고 모션 영상 업로드</h2>
+    <input type="file" id="videoInput" accept="video/*">
+    <video id="video" controls playsinline muted></video>
+    <p id="videoMeta" class="meta"></p>
+  </section>
+
+  <!-- 2. 프레임 추출 -->
+  <section id="s2" class="panel">
+    <h2>2. 프레임 추출</h2>
+    <div class="row">
+      <label><input type="radio" name="exMode" value="fps" checked> 지정 FPS로 추출</label>
+      <input type="number" id="exFps" value="12" min="1" max="60" step="1"> fps
+    </div>
+    <div class="row">
+      <label><input type="radio" name="exMode" value="interval"> 일정 간격</label>
+      <input type="number" id="exInterval" value="0.5" min="0.02" step="0.1"> 초마다
+    </div>
+    <div class="row">
+      <label><input type="radio" name="exMode" value="all"> 전체 프레임 (원본 FPS 지정)</label>
+      <input type="number" id="exSrcFps" value="30" min="1" max="120" step="1"> fps
+    </div>
+    <button id="extractBtn" class="primary">프레임 추출</button>
+    <p id="extractStatus" class="meta"></p>
+    <div id="frameStrip" class="strip"></div>
+  </section>
+
+  <!-- 3. 로고 분리 -->
+  <section id="s3" class="panel">
+    <h2>3. 흰 배경 제거 / 로고 분리</h2>
+    <div class="row">
+      <label>분리 방식
+        <select id="sepMode">
+          <option value="matte">Luminance 매트 (부드러움, 권장)</option>
+          <option value="soft">Threshold + 페더</option>
+          <option value="hard">Threshold (하드)</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <label>Threshold <input type="range" id="sepThreshold" min="0" max="255" value="235"></label>
+      <span id="sepThresholdVal">235</span>
+    </div>
+    <div class="row">
+      <label>페더 <input type="range" id="sepFeather" min="1" max="120" value="40"></label>
+      <span id="sepFeatherVal">40</span>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="sepForceBlack" checked> 로고를 순검정으로 정규화</label>
+    </div>
+    <div class="previewPair">
+      <div><span class="cap">원본</span><canvas id="sepBefore"></canvas></div>
+      <div class="checker"><span class="cap">분리 결과 (투명)</span><canvas id="sepAfter"></canvas></div>
+    </div>
+    <button id="applySepBtn" class="primary">모든 프레임에 적용</button>
+    <p id="sepStatus" class="meta"></p>
+  </section>
+
+  <!-- 4. 배경 적용 -->
+  <section id="s4" class="panel">
+    <h2>4. 배경 이미지 적용</h2>
+    <input type="file" id="bgInput" accept="image/*" multiple>
+    <div id="bgList" class="strip"></div>
+    <div class="row">
+      <label>배치 방식
+        <select id="bgMode">
+          <option value="sequential">순서대로 (프레임에 차례로)</option>
+          <option value="interval">일정 프레임 간격</option>
+          <option value="manual">프레임별 직접 지정</option>
+        </select>
+      </label>
+      <label id="bgIntervalWrap" hidden>간격 <input type="number" id="bgInterval" value="8" min="1" step="1"> 프레임</label>
+    </div>
+    <div id="manualAssign" class="strip" hidden></div>
+    <p class="meta">배경은 화면을 덮도록(cover) 스케일됩니다.</p>
+  </section>
+
+  <!-- 5. 미리보기 -->
+  <section id="s5" class="panel">
+    <h2>5. 합성 미리보기</h2>
+    <canvas id="previewCanvas"></canvas>
+    <div class="row controls">
+      <button id="playBtn" class="primary">▶ 재생</button>
+      <label>재생 FPS <input type="number" id="playFps" value="12" min="1" max="60"></label>
+      <label>배경 전환 간격 <input type="number" id="bgSwitch" value="8" min="1"> 프레임</label>
+      <span id="frameCounter" class="meta"></span>
+    </div>
+    <input type="range" id="scrub" min="0" value="0" step="1" style="width:100%">
+  </section>
+
+  <!-- 6. 내보내기 -->
+  <section id="s6" class="panel">
+    <h2>6. 내보내기</h2>
+    <div class="row">
+      <label>출력 내용
+        <select id="exportContent">
+          <option value="composite">합성본 (배경+로고)</option>
+          <option value="logo">로고만 (투명 PNG)</option>
+        </select>
+      </label>
+    </div>
+    <button id="saveFramesBtn" class="primary">프레임 일괄 저장 (ZIP)</button>
+    <button id="exportVideoBtn" class="primary">영상으로 내보내기 (WebM)</button>
+    <p id="exportStatus" class="meta"></p>
+  </section>
+
+  <!-- 7. 가공본 재조합 -->
+  <section id="s7" class="panel">
+    <h2>7. 외부 가공 프레임 재조합</h2>
+    <p class="meta">파일명 순서(자연 정렬)로 자동 배열됩니다. 예: frame_0001.png … frame_0002.png</p>
+    <input type="file" id="processedInput" accept="image/*" multiple>
+    <div id="processedStrip" class="strip"></div>
+    <canvas id="processedCanvas"></canvas>
+    <div class="row controls">
+      <button id="playProcessedBtn" class="primary">▶ 재생</button>
+      <label>재생 FPS <input type="number" id="procFps" value="12" min="1" max="60"></label>
+      <button id="exportProcessedBtn" class="primary">영상으로 내보내기 (WebM)</button>
+    </div>
+    <p id="procStatus" class="meta"></p>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

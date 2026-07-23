@@ -135,7 +135,7 @@ function buildStaticFrames() {
   state.frames = Array.from({ length: n }, () => ({ canvas: logo, time: 0 }));
   state.separated = state.frames.map(() => logo); // already tint-ready
   state.manualBg = [];
-  ["playBtn", "saveFramesBtn", "exportVideoBtn"].forEach((id) => { $(id).disabled = false; });
+  ["playBtn", "saveFramesBtn", "exportVideoBtn", "exportGifBtn"].forEach((id) => { $(id).disabled = false; });
   syncScrub();
   cur = Math.min(cur, n - 1);
   drawPreview(cur);
@@ -216,7 +216,7 @@ $("extractBtn").addEventListener("click", async () => {
   buildManualAssign();
   syncScrub();
   if (state.frames.length) {
-    ["saveRawBtn", "applySepBtn", "playBtn", "saveFramesBtn", "exportVideoBtn"]
+    ["saveRawBtn", "applySepBtn", "playBtn", "saveFramesBtn", "exportVideoBtn", "exportGifBtn"]
       .forEach((id) => { $(id).disabled = false; });
     guideTo("s3");
   }
@@ -591,6 +591,72 @@ $("exportVideoBtn").addEventListener("click", () => {
   }, frameSize(), $("exportStatus"), "logo-match-cut.webm", BITRATE[$("exportQuality").value]);
 });
 
+/* ---------- transparent GIF export (Figma/web-safe alpha) ----------
+   Video (WebM/MP4) can't carry alpha — Figma renders transparent pixels black.
+   GIF has real (binary) transparency, so it's the reliable animated format there. */
+const GIF_WORKER = "assets/gif.worker.js"; // self-hosted: same-origin Worker, no CORS
+const GIF_KEY = 0xff00ff; // magenta transparency key, unlikely to clash with a logo
+
+/* GIF is heavy; cap the long side so files/encode stay sane. ponytail: fixed 720 cap. */
+function gifSize() {
+  const { W, H } = frameSize();
+  const cap = 720, m = Math.max(W, H);
+  if (m <= cap) return { W, H };
+  const even = (n) => 2 * Math.round(n / 2), s = cap / m;
+  return { W: even(W * s), H: even(H * s) };
+}
+
+$("exportGifBtn").addEventListener("click", () => {
+  if (!state.frames.length) return alert("먼저 프레임을 준비하세요.");
+  if (typeof GIF === "undefined") return alert("GIF 인코더를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.");
+  const fps = Number($("playFps").value) || 12;
+  const total = state.frames.length;
+  const dur = Number($("exportDuration").value) || 0;
+  const count = dur > 0 ? Math.round(dur * fps) : total; // same loop/cut rule as WebM
+  exportGif(count, fps);
+});
+
+function exportGif(count, fps) {
+  const content = $("exportContent").value;
+  const transparent = content === "logo";
+  const { W, H } = gifSize();
+  const gif = new GIF({
+    workers: 2, quality: 10, width: W, height: H, repeat: 0,
+    workerScript: GIF_WORKER, transparent: transparent ? GIF_KEY : null,
+  });
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+  for (let j = 0; j < count; j++) {
+    const i = j % state.frames.length;
+    ctx.clearRect(0, 0, W, H);
+    if (transparent) {
+      drawLogoOn(ctx, i, W, H);
+      keyOutAlpha(ctx, W, H); // hard-threshold alpha to the magenta key (no fringe)
+    } else composite(ctx, i, W, H);
+    gif.addFrame(ctx, { copy: true, delay: 1000 / fps });
+    $("exportStatus").textContent = `GIF 프레임 준비… ${j + 1}/${count}`;
+  }
+  gif.on("progress", (p) =>
+    $("exportStatus").textContent = `GIF 인코딩… ${Math.round(p * 100)}%`);
+  gif.on("finished", (blob) => {
+    downloadBlob(blob, "logo-motion.gif");
+    $("exportStatus").textContent = `GIF 저장 완료 (${(blob.size / 1e6).toFixed(1)}MB)`;
+  });
+  gif.render();
+}
+
+/* GIF transparency is binary: paint semi/fully transparent pixels the key color
+   (opaque) so the encoder maps exactly that color to transparent, no colored halo. */
+function keyOutAlpha(ctx, W, H) {
+  const img = ctx.getImageData(0, 0, W, H), d = img.data;
+  const r = (GIF_KEY >> 16) & 255, g = (GIF_KEY >> 8) & 255, b = GIF_KEY & 255;
+  for (let p = 0; p < d.length; p += 4) {
+    if (d[p + 3] < 128) { d[p] = r; d[p + 1] = g; d[p + 2] = b; }
+    d[p + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
 /* record a canvas animation to webm via MediaRecorder (native) */
 async function recordFrames(count, fps, drawFn, size, statusEl, filename, bitrate) {
   const { W, H } = size;
@@ -723,8 +789,9 @@ function updateExportInfo() {
   const count = total ? (dur > 0 ? Math.round(dur * fps) : total) : 0;
   $("exportInfo").textContent =
     `출력 ${W}×${H}px · ${mbps}Mbps · ${count}프레임 · 약 ${(count / fps).toFixed(1)}초`;
+  $("transparentNote").hidden = $("exportContent").value !== "logo"; // WebM can't do alpha
 }
-["exportRes", "exportQuality", "exportDuration", "playFps"].forEach((id) => {
+["exportRes", "exportQuality", "exportDuration", "playFps", "exportContent"].forEach((id) => {
   $(id).addEventListener("input", updateExportInfo);
   $(id).addEventListener("change", updateExportInfo);
 });

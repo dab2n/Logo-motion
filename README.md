@@ -45,6 +45,8 @@ Chrome 계열 권장 (`MediaRecorder`, `captureStream` 사용).
 
 - **전체 프레임 추출**은 브라우저에서 원본 정확 FPS를 알 수 없어 사용자가 지정한 FPS로 근사한다.
   정확도가 필요하면 `WebCodecs`로 교체.
-- **WebM만 지원**. MP4가 필요하면 `ffmpeg.wasm` 추가.
+- **영상은 WebM만 지원**. MP4가 필요하면 `ffmpeg.wasm` 추가.
+- **투명 배경 영상 주의**: WebM/MP4 등 영상은 알파(투명)를 담지 못해 Figma에서 투명 부분이 검게 나온다.
+  투명 로고 모션이 필요하면 **투명 GIF**(binary 투명, `gif.js` 자체 호스팅) 또는 **PNG 시퀀스 ZIP**을 쓴다.
 - 프레임을 메모리에 Canvas로 보관 → 프레임 수가 많으면 무거움. 대량 처리 시 IndexedDB/스트리밍으로 확장.
 - 배경 합성은 cover 스케일 고정. 위치·블렌드모드·오프셋은 추후 확장 가능.

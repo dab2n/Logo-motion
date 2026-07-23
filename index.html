@@ -115,20 +115,44 @@
     <div class="row">
       <label>배치 방식
         <select id="bgMode">
-          <option value="sequential">순서대로 (프레임에 차례로)</option>
-          <option value="interval">일정 프레임 간격</option>
+          <option value="sequential">순서대로 자동 배치</option>
           <option value="manual">프레임별 직접 지정</option>
         </select>
       </label>
-      <label id="bgIntervalWrap" hidden>간격 <input type="number" id="bgInterval" value="8" min="1" step="1"> 프레임</label>
+      <label id="bgIntervalWrap">배경 전환 간격 <input type="number" id="bgInterval" value="8" min="1" step="1"> 프레임</label>
     </div>
     <div id="manualAssign" class="strip" hidden></div>
-    <p class="meta">배경은 화면을 덮도록(cover) 스케일됩니다.</p>
+    <p class="meta">배경은 화면을 덮도록(cover) 스케일됩니다 — 비율이 안 맞으면 아래 예시처럼 가장자리가 잘립니다.</p>
+    <div class="coverExample">
+      <div><span class="cap">원본 배경</span><canvas id="coverOrig"></canvas></div>
+      <div><span class="cap">화면(현재 비율)을 덮은 결과</span><canvas id="coverResult"></canvas></div>
+    </div>
   </section>
 
   <!-- 5. 미리보기 -->
   <section id="s5" class="panel">
-    <h2>5. 합성 미리보기</h2>
+    <h2>5. 합성 미리보기 · 레이아웃</h2>
+    <div class="hint">
+      💡 <b>재생 FPS</b> — 1초에 몇 장을 보여줄지 정합니다. <b>높이면</b> 영상이 빠르고 부드럽게, <b>낮추면</b> 느리고 뚝뚝 끊기게 재생됩니다. 내보내는 영상 속도에도 그대로 반영됩니다.<br>
+      💡 <b>배경 전환 간격</b> — 배경을 <b>몇 프레임마다</b> 바꿀지 정합니다. <b>작을수록</b> 배경이 자주 바뀌어 빠른 매치컷이 되고, <b>클수록</b> 한 배경이 오래 유지됩니다. (4단계 '순서대로 자동 배치'에 적용)
+    </div>
+    <div class="row">
+      <label>화면 비율
+        <select id="aspect">
+          <option value="orig">원본 비율</option>
+          <option value="16:9">16:9 (가로)</option>
+          <option value="9:16">9:16 (세로)</option>
+          <option value="1:1">1:1 (정사각)</option>
+          <option value="4:5">4:5 (인스타)</option>
+        </select>
+      </label>
+      <label>로고 크기 <input type="range" id="logoScale" min="10" max="200" value="100"></label>
+      <span id="logoScaleVal">100%</span>
+    </div>
+    <div class="row">
+      <label>로고 가로 위치 <input type="range" id="logoX" min="-50" max="50" value="0"></label>
+      <label>로고 세로 위치 <input type="range" id="logoY" min="-50" max="50" value="0"></label>
+    </div>
     <canvas id="previewCanvas"></canvas>
     <div class="row controls">
       <button id="playBtn" class="primary" disabled>▶ 재생</button>

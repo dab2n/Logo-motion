@@ -258,6 +258,7 @@ async function addBackgrounds(files) {
   }
   renderBgList();
   buildManualAssign();
+  renderCoverExample();
   if (state.backgrounds.length) guideTo("s5");
 }
 $("bgInput").addEventListener("change", (e) => addBackgrounds(e.target.files));
@@ -284,8 +285,9 @@ function renderBgList() {
 
 $("bgMode").addEventListener("change", () => {
   const mode = $("bgMode").value;
-  $("bgIntervalWrap").hidden = mode !== "interval";
+  $("bgIntervalWrap").hidden = mode === "manual"; // interval only relevant for auto
   $("manualAssign").hidden = mode !== "manual";
+  if (state.frames.length) drawPreview(cur);
 });
 
 function buildManualAssign() {
@@ -297,25 +299,26 @@ function buildManualAssign() {
     sel.innerHTML = '<option value="">-</option>' +
       state.backgrounds.map((_, bi) => `<option value="${bi}">bg ${bi}</option>`).join("");
     sel.value = state.manualBg[i] ?? "";
-    sel.onchange = () => { state.manualBg[i] = sel.value === "" ? null : Number(sel.value); };
+    sel.onchange = () => {
+      state.manualBg[i] = sel.value === "" ? null : Number(sel.value);
+      if (state.frames.length) drawPreview(cur);
+    };
     t.appendChild(sel);
     wrap.appendChild(t);
   });
 }
 
+function bgHold() { return Math.max(1, Number($("bgInterval").value) || 1); }
+
 /* which background image applies to frame i */
 function bgForFrame(i) {
   if (!state.backgrounds.length) return null;
-  const mode = $("bgMode").value;
-  if (mode === "manual") {
+  if ($("bgMode").value === "manual") {
     const idx = state.manualBg[i];
     return idx == null ? null : state.backgrounds[idx];
   }
-  if (mode === "interval") {
-    const step = Math.max(1, Number($("bgInterval").value));
-    return state.backgrounds[Math.floor(i / step) % state.backgrounds.length];
-  }
-  return state.backgrounds[i % state.backgrounds.length]; // sequential
+  // sequential auto: hold each background for N frames (배경 전환 간격)
+  return state.backgrounds[Math.floor(i / bgHold()) % state.backgrounds.length];
 }
 
 /* ---------- compositing ---------- */
@@ -328,8 +331,19 @@ function composite(ctx, i, W, H) {
   const bg = bgForFrame(i);
   if (bg) drawCover(ctx, bg, W, H);
   else { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H); }
+  drawLogoOn(ctx, i, W, H);
+}
+
+/* place the logo with the chosen size & position (contain-fit, then scaled) */
+function drawLogoOn(ctx, i, W, H) {
   const logo = logoFor(i);
-  if (logo) ctx.drawImage(logo, 0, 0, W, H);
+  if (!logo) return;
+  const s = (Number($("logoScale").value) || 100) / 100;
+  const base = Math.min(W / logo.width, H / logo.height);
+  const lw = logo.width * base * s, lh = logo.height * base * s;
+  const x = (W - lw) / 2 + (Number($("logoX").value) || 0) / 100 * W;
+  const y = (H - lh) / 2 + (Number($("logoY").value) || 0) / 100 * H;
+  ctx.drawImage(logo, x, y, lw, lh);
 }
 
 function drawCover(ctx, img, W, H) {
@@ -338,9 +352,14 @@ function drawCover(ctx, img, W, H) {
   ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
 }
 
+/* output canvas size from the chosen aspect ratio (height fixed to source) */
 function frameSize() {
   const f = state.frames[0]?.canvas;
-  return f ? { W: f.width, H: f.height } : { W: 1280, H: 720 };
+  const bw = f ? f.width : 1280, bh = f ? f.height : 720;
+  const a = $("aspect") ? $("aspect").value : "orig";
+  if (a === "orig") return { W: bw, H: bh };
+  const [rw, rh] = a.split(":").map(Number);
+  return { W: Math.round(bh * rw / rh), H: bh };
 }
 
 /* ---------- 5. preview playback ---------- */
@@ -382,12 +401,8 @@ function renderFrameToCanvas(i, content) {
   const { W, H } = frameSize();
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const ctx = c.getContext("2d");
-  if (content === "logo") {
-    const logo = logoFor(i);
-    if (logo) ctx.drawImage(logo, 0, 0, W, H);
-  } else {
-    composite(ctx, i, W, H);
-  }
+  if (content === "logo") drawLogoOn(ctx, i, W, H); // transparent bg + placed logo
+  else composite(ctx, i, W, H);
   return c;
 }
 
@@ -430,10 +445,8 @@ $("exportVideoBtn").addEventListener("click", () => {
   const content = $("exportContent").value;
   const fps = Number($("playFps").value);
   recordFrames(state.frames.length, fps, (ctx, i, W, H) => {
-    if (content === "logo") {
-      ctx.clearRect(0, 0, W, H);
-      const logo = logoFor(i); if (logo) ctx.drawImage(logo, 0, 0, W, H);
-    } else composite(ctx, i, W, H);
+    if (content === "logo") { ctx.clearRect(0, 0, W, H); drawLogoOn(ctx, i, W, H); }
+    else composite(ctx, i, W, H);
   }, frameSize(), $("exportStatus"), "logo-match-cut.webm");
 });
 
@@ -526,3 +539,52 @@ $("exportProcessedBtn").addEventListener("click", () => {
     (ctx, i, W, H) => ctx.drawImage(state.processed[i].img, 0, 0, W, H),
     procSize(), $("procStatus"), "final-match-cut.webm");
 });
+
+/* ---------- layout controls (aspect / logo size & position) ---------- */
+["aspect", "logoScale", "logoX", "logoY"].forEach((id) =>
+  $(id).addEventListener("input", () => {
+    $("logoScaleVal").textContent = $("logoScale").value + "%";
+    if (id === "aspect") renderCoverExample();
+    if (state.frames.length) drawPreview(cur);
+  }));
+
+/* keep the two "배경 전환 간격" inputs (step4 + step5) in sync — one source of truth */
+function syncHold(v) {
+  v = Math.max(1, Number(v) || 1);
+  $("bgInterval").value = v; $("bgSwitch").value = v;
+  if (state.frames.length) drawPreview(cur);
+}
+$("bgInterval").addEventListener("input", (e) => syncHold(e.target.value));
+$("bgSwitch").addEventListener("input", (e) => syncHold(e.target.value));
+
+/* ---------- step 4 cover example ---------- */
+function makeSample() {
+  const c = document.createElement("canvas"); c.width = 400; c.height = 300;
+  const x = c.getContext("2d");
+  const g = x.createLinearGradient(0, 0, 400, 300);
+  g.addColorStop(0, "#ff9a3c"); g.addColorStop(1, "#fa3030");
+  x.fillStyle = g; x.fillRect(0, 0, 400, 300);
+  x.strokeStyle = "rgba(255,255,255,.35)";
+  for (let i = 40; i < 400; i += 40) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 300); x.stroke(); }
+  for (let j = 40; j < 300; j += 40) { x.beginPath(); x.moveTo(0, j); x.lineTo(400, j); x.stroke(); }
+  x.fillStyle = "rgba(255,255,255,.9)"; x.font = "bold 34px sans-serif"; x.textAlign = "center";
+  x.fillText("배경 예시", 200, 165);
+  return c;
+}
+const samplePlaceholder = makeSample();
+
+function renderCoverExample() {
+  const src = state.backgrounds[0] || samplePlaceholder;
+  // original: whole image, contained (letterboxed) so nothing is cut
+  const BW = 240, BH = 150, o = $("coverOrig"), oc = o.getContext("2d");
+  o.width = BW; o.height = BH;
+  oc.fillStyle = "#eef1f4"; oc.fillRect(0, 0, BW, BH);
+  const s = Math.min(BW / src.width, BH / src.height);
+  oc.drawImage(src, (BW - src.width * s) / 2, (BH - src.height * s) / 2, src.width * s, src.height * s);
+  // result: cover-cropped to the current output aspect ratio
+  const { W, H } = frameSize();
+  const RH = 150, RW = Math.round(RH * W / H), r = $("coverResult"), rc = r.getContext("2d");
+  r.width = RW; r.height = RH;
+  drawCover(rc, src, RW, RH);
+}
+renderCoverExample();

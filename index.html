@@ -111,6 +111,7 @@
       <input type="file" id="bgInput" accept="image/*" multiple>
       <span class="drophint">또는 여기로 배경 이미지들을 드래그 앤 드롭</span>
     </div>
+    <p id="bgCount" class="meta">아직 배경이 없습니다.</p>
     <div id="bgList" class="strip"></div>
     <div class="row">
       <label>배치 방식
@@ -119,14 +120,9 @@
           <option value="manual">프레임별 직접 지정</option>
         </select>
       </label>
-      <label id="bgIntervalWrap">배경 전환 간격 <input type="number" id="bgInterval" value="8" min="1" step="1"> 프레임</label>
     </div>
     <div id="manualAssign" class="strip" hidden></div>
-    <p class="meta">배경은 화면을 덮도록(cover) 스케일됩니다 — 비율이 안 맞으면 아래 예시처럼 가장자리가 잘립니다.</p>
-    <div class="coverExample">
-      <div><span class="cap">원본 배경</span><canvas id="coverOrig"></canvas></div>
-      <div><span class="cap">화면(현재 비율)을 덮은 결과</span><canvas id="coverResult"></canvas></div>
-    </div>
+    <p class="meta">배경은 화면을 덮도록(cover) 스케일됩니다 — 비율이 안 맞으면 가장자리가 잘립니다. 실제 합성 결과와 전환 간격은 <b>5단계 미리보기</b>에서 확인·조절하세요.</p>
   </section>
 
   <!-- 5. 미리보기 -->
@@ -134,7 +130,8 @@
     <h2>5. 합성 미리보기 · 레이아웃</h2>
     <div class="hint">
       💡 <b>재생 FPS</b> — 1초에 몇 장을 보여줄지 정합니다. <b>높이면</b> 영상이 빠르고 부드럽게, <b>낮추면</b> 느리고 뚝뚝 끊기게 재생됩니다. 내보내는 영상 속도에도 그대로 반영됩니다.<br>
-      💡 <b>배경 전환 간격</b> — 배경을 <b>몇 프레임마다</b> 바꿀지 정합니다. <b>작을수록</b> 배경이 자주 바뀌어 빠른 매치컷이 되고, <b>클수록</b> 한 배경이 오래 유지됩니다. (4단계 '순서대로 자동 배치'에 적용)
+      💡 <b>배경 전환 간격</b> — 배경을 <b>몇 프레임마다</b> 바꿀지 정합니다. <b>작을수록</b> 배경이 자주 바뀌어 빠른 매치컷이 되고, <b>클수록</b> 한 배경이 오래 유지됩니다. (4단계 '순서대로 자동 배치'에 적용)<br>
+      🎬 <b>배경이 바뀔 때마다 로고 컷도 넘기고 싶다면</b> → 배경 전환 간격을 <b>1</b>로 두세요. 매 프레임마다 배경이 바뀌어 로고 움직임과 배경 전환이 딱 맞아떨어집니다. (2단계에서 프레임을 적게 뽑고, 그 수만큼 배경을 준비하면 <b>한 컷 = 한 배경</b>이 됩니다.)
     </div>
     <div class="row">
       <label>화면 비율
@@ -173,7 +170,24 @@
           <option value="logo">로고만 (투명 PNG)</option>
         </select>
       </label>
+      <label>해상도
+        <select id="exportRes">
+          <option value="orig">원본</option>
+          <option value="720">720p</option>
+          <option value="1080" selected>1080p (HD)</option>
+          <option value="1440">1440p (2K)</option>
+          <option value="2160">2160p (4K)</option>
+        </select>
+      </label>
+      <label>화질(비트레이트)
+        <select id="exportQuality">
+          <option value="std">표준</option>
+          <option value="high" selected>높음</option>
+          <option value="max">최고</option>
+        </select>
+      </label>
     </div>
+    <p id="exportInfo" class="meta"></p>
     <button id="saveFramesBtn" class="primary" disabled>프레임 일괄 저장 (ZIP)</button>
     <button id="exportVideoBtn" class="primary" disabled>영상으로 내보내기 (WebM)</button>
     <p id="exportStatus" class="meta"></p>

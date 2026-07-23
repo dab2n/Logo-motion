@@ -254,12 +254,21 @@ function drawInto(canvas, src) {
 async function addBackgrounds(files) {
   for (const file of files) {
     const img = await loadImage(URL.createObjectURL(file));
-    state.backgrounds.push(img);
+    state.backgrounds.push({ img, name: file.name });
   }
   renderBgList();
   buildManualAssign();
-  renderCoverExample();
   if (state.backgrounds.length) guideTo("s5");
+}
+
+function removeBackground(k) {
+  state.backgrounds.splice(k, 1);
+  // keep manual assignments pointing at the right images after the shift
+  state.manualBg = state.manualBg.map((v) =>
+    v == null ? null : v === k ? null : v > k ? v - 1 : v);
+  renderBgList();
+  buildManualAssign();
+  if (state.frames.length) drawPreview(cur);
 }
 $("bgInput").addEventListener("change", (e) => addBackgrounds(e.target.files));
 makeDrop("bgDrop", addBackgrounds);
@@ -273,20 +282,23 @@ function loadImage(url) {
 
 function renderBgList() {
   const list = $("bgList"); list.innerHTML = "";
-  state.backgrounds.forEach((img, i) => {
+  state.backgrounds.forEach((b, i) => {
     const t = document.createElement("div"); t.className = "thumb";
-    const th = thumbCanvas(img, 72);
-    t.appendChild(th);
-    const s = document.createElement("small"); s.textContent = "bg " + i;
+    t.appendChild(thumbCanvas(b.img, 72));
+    const del = document.createElement("button");
+    del.className = "delbtn"; del.textContent = "×"; del.title = "삭제";
+    del.onclick = () => removeBackground(i);
+    t.appendChild(del);
+    const s = document.createElement("small"); s.textContent = b.name || ("bg " + i);
     t.appendChild(s);
     list.appendChild(t);
   });
+  const n = state.backgrounds.length;
+  $("bgCount").textContent = n ? `배경 ${n}장 로드됨` : "아직 배경이 없습니다.";
 }
 
 $("bgMode").addEventListener("change", () => {
-  const mode = $("bgMode").value;
-  $("bgIntervalWrap").hidden = mode === "manual"; // interval only relevant for auto
-  $("manualAssign").hidden = mode !== "manual";
+  $("manualAssign").hidden = $("bgMode").value !== "manual";
   if (state.frames.length) drawPreview(cur);
 });
 
@@ -308,17 +320,17 @@ function buildManualAssign() {
   });
 }
 
-function bgHold() { return Math.max(1, Number($("bgInterval").value) || 1); }
+function bgHold() { return Math.max(1, Number($("bgSwitch").value) || 1); }
 
 /* which background image applies to frame i */
 function bgForFrame(i) {
   if (!state.backgrounds.length) return null;
   if ($("bgMode").value === "manual") {
     const idx = state.manualBg[i];
-    return idx == null ? null : state.backgrounds[idx];
+    return idx == null ? null : state.backgrounds[idx].img;
   }
-  // sequential auto: hold each background for N frames (배경 전환 간격)
-  return state.backgrounds[Math.floor(i / bgHold()) % state.backgrounds.length];
+  // sequential auto: hold each background for N frames (배경 전환 간격, step 5)
+  return state.backgrounds[Math.floor(i / bgHold()) % state.backgrounds.length].img;
 }
 
 /* ---------- compositing ---------- */
@@ -352,14 +364,16 @@ function drawCover(ctx, img, W, H) {
   ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
 }
 
-/* output canvas size from the chosen aspect ratio (height fixed to source) */
+/* output size from aspect ratio (step 5) + target resolution (step 6). Even dims for encoders. */
 function frameSize() {
   const f = state.frames[0]?.canvas;
   const bw = f ? f.width : 1280, bh = f ? f.height : 720;
   const a = $("aspect") ? $("aspect").value : "orig";
-  if (a === "orig") return { W: bw, H: bh };
-  const [rw, rh] = a.split(":").map(Number);
-  return { W: Math.round(bh * rw / rh), H: bh };
+  const ratio = a === "orig" ? bw / bh : (() => { const [rw, rh] = a.split(":").map(Number); return rw / rh; })();
+  const res = $("exportRes") ? $("exportRes").value : "orig";
+  const H = res === "orig" ? bh : Number(res);
+  const even = (n) => 2 * Math.round(n / 2);
+  return { W: even(H * ratio), H: even(H) };
 }
 
 /* ---------- 5. preview playback ---------- */
@@ -440,6 +454,8 @@ $("saveFramesBtn").addEventListener("click", () => {
     content === "logo" ? "logo" : "composite", $("exportStatus"));
 });
 
+const BITRATE = { std: 8e6, high: 16e6, max: 32e6 };
+
 $("exportVideoBtn").addEventListener("click", () => {
   if (!state.frames.length) return alert("먼저 프레임을 추출하세요.");
   const content = $("exportContent").value;
@@ -447,17 +463,20 @@ $("exportVideoBtn").addEventListener("click", () => {
   recordFrames(state.frames.length, fps, (ctx, i, W, H) => {
     if (content === "logo") { ctx.clearRect(0, 0, W, H); drawLogoOn(ctx, i, W, H); }
     else composite(ctx, i, W, H);
-  }, frameSize(), $("exportStatus"), "logo-match-cut.webm");
+  }, frameSize(), $("exportStatus"), "logo-match-cut.webm", BITRATE[$("exportQuality").value]);
 });
 
 /* record a canvas animation to webm via MediaRecorder (native) */
-async function recordFrames(count, fps, drawFn, size, statusEl, filename) {
+async function recordFrames(count, fps, drawFn, size, statusEl, filename, bitrate) {
   const { W, H } = size;
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const ctx = c.getContext("2d");
   const stream = c.captureStream(fps);
   const chunks = [];
-  const rec = new MediaRecorder(stream, { mimeType: "video/webm" });
+  const rec = new MediaRecorder(stream, {
+    mimeType: "video/webm",
+    videoBitsPerSecond: bitrate || 16e6,
+  });
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   rec.start();
   for (let i = 0; i < count; i++) {
@@ -537,54 +556,24 @@ $("exportProcessedBtn").addEventListener("click", () => {
   const fps = Number($("procFps").value);
   recordFrames(state.processed.length, fps,
     (ctx, i, W, H) => ctx.drawImage(state.processed[i].img, 0, 0, W, H),
-    procSize(), $("procStatus"), "final-match-cut.webm");
+    procSize(), $("procStatus"), "final-match-cut.webm", BITRATE[$("exportQuality").value]);
 });
 
 /* ---------- layout controls (aspect / logo size & position) ---------- */
 ["aspect", "logoScale", "logoX", "logoY"].forEach((id) =>
   $(id).addEventListener("input", () => {
     $("logoScaleVal").textContent = $("logoScale").value + "%";
-    if (id === "aspect") renderCoverExample();
+    if (id === "aspect") updateExportInfo();
     if (state.frames.length) drawPreview(cur);
   }));
 
-/* keep the two "배경 전환 간격" inputs (step4 + step5) in sync — one source of truth */
-function syncHold(v) {
-  v = Math.max(1, Number(v) || 1);
-  $("bgInterval").value = v; $("bgSwitch").value = v;
-  if (state.frames.length) drawPreview(cur);
-}
-$("bgInterval").addEventListener("input", (e) => syncHold(e.target.value));
-$("bgSwitch").addEventListener("input", (e) => syncHold(e.target.value));
+$("bgSwitch").addEventListener("input", () => { if (state.frames.length) drawPreview(cur); });
 
-/* ---------- step 4 cover example ---------- */
-function makeSample() {
-  const c = document.createElement("canvas"); c.width = 400; c.height = 300;
-  const x = c.getContext("2d");
-  const g = x.createLinearGradient(0, 0, 400, 300);
-  g.addColorStop(0, "#ff9a3c"); g.addColorStop(1, "#fa3030");
-  x.fillStyle = g; x.fillRect(0, 0, 400, 300);
-  x.strokeStyle = "rgba(255,255,255,.35)";
-  for (let i = 40; i < 400; i += 40) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 300); x.stroke(); }
-  for (let j = 40; j < 300; j += 40) { x.beginPath(); x.moveTo(0, j); x.lineTo(400, j); x.stroke(); }
-  x.fillStyle = "rgba(255,255,255,.9)"; x.font = "bold 34px sans-serif"; x.textAlign = "center";
-  x.fillText("배경 예시", 200, 165);
-  return c;
-}
-const samplePlaceholder = makeSample();
-
-function renderCoverExample() {
-  const src = state.backgrounds[0] || samplePlaceholder;
-  // original: whole image, contained (letterboxed) so nothing is cut
-  const BW = 240, BH = 150, o = $("coverOrig"), oc = o.getContext("2d");
-  o.width = BW; o.height = BH;
-  oc.fillStyle = "#eef1f4"; oc.fillRect(0, 0, BW, BH);
-  const s = Math.min(BW / src.width, BH / src.height);
-  oc.drawImage(src, (BW - src.width * s) / 2, (BH - src.height * s) / 2, src.width * s, src.height * s);
-  // result: cover-cropped to the current output aspect ratio
+/* ---------- export size/quality info ---------- */
+function updateExportInfo() {
   const { W, H } = frameSize();
-  const RH = 150, RW = Math.round(RH * W / H), r = $("coverResult"), rc = r.getContext("2d");
-  r.width = RW; r.height = RH;
-  drawCover(rc, src, RW, RH);
+  const mbps = { std: 8, high: 16, max: 32 }[$("exportQuality").value];
+  $("exportInfo").textContent = `출력 크기: ${W}×${H}px · 비트레이트 약 ${mbps}Mbps`;
 }
-renderCoverExample();
+["exportRes", "exportQuality"].forEach((id) => $(id).addEventListener("change", updateExportInfo));
+updateExportInfo();

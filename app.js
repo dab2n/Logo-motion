@@ -23,17 +23,30 @@ function showStep(id, btn) {
   (btn || document.querySelector(`[data-go="${id}"]`)).classList.add("active");
 }
 
+/* drag & drop: forward dropped files to the same handler as the input */
+function makeDrop(zoneId, handler) {
+  const z = $(zoneId);
+  ["dragover", "dragenter"].forEach((ev) =>
+    z.addEventListener(ev, (e) => { e.preventDefault(); z.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) =>
+    z.addEventListener(ev, (e) => { e.preventDefault(); z.classList.remove("over"); }));
+  z.addEventListener("drop", (e) => {
+    if (e.dataTransfer.files.length) handler(e.dataTransfer.files);
+  });
+}
+
 /* ---------- 1. video upload ---------- */
 const video = $("video");
-$("videoInput").addEventListener("change", (e) => {
-  const file = e.target.files[0];
+function loadVideoFile(file) {
   if (!file) return;
   video.src = URL.createObjectURL(file);
   video.onloadedmetadata = () => {
     $("videoMeta").textContent =
       `${video.videoWidth}×${video.videoHeight}px · ${video.duration.toFixed(2)}s`;
   };
-});
+}
+$("videoInput").addEventListener("change", (e) => loadVideoFile(e.target.files[0]));
+makeDrop("videoDrop", (files) => loadVideoFile(files[0]));
 
 /* ---------- 2. frame extraction ---------- */
 function seek(t) {
@@ -44,9 +57,25 @@ function seek(t) {
   });
 }
 
-function extractionTimes() {
+/* some files report Infinity/NaN duration until seeked — force the browser to compute it */
+async function ensureDuration() {
+  if (isFinite(video.duration) && video.duration > 0) return video.duration;
+  return new Promise((res) => {
+    const onChange = () => {
+      if (isFinite(video.duration) && video.duration > 0) {
+        video.removeEventListener("durationchange", onChange);
+        video.currentTime = 0;
+        res(video.duration);
+      }
+    };
+    video.addEventListener("durationchange", onChange);
+    video.currentTime = 1e101; // seek past end -> browser resolves real duration
+    setTimeout(() => res(video.duration), 3000); // give up, let caller validate
+  });
+}
+
+function extractionTimes(d) {
   const mode = document.querySelector('input[name="exMode"]:checked').value;
-  const d = video.duration;
   let step;
   if (mode === "fps") step = 1 / Number($("exFps").value);
   else if (mode === "interval") step = Number($("exInterval").value);
@@ -58,7 +87,11 @@ function extractionTimes() {
 
 $("extractBtn").addEventListener("click", async () => {
   if (!video.src) return alert("먼저 영상을 업로드하세요.");
-  const times = extractionTimes();
+  const d = await ensureDuration();
+  if (!isFinite(d) || d <= 0 || !video.videoWidth) {
+    return alert("영상 길이/해상도를 읽지 못했습니다. 영상이 완전히 로드된 뒤 다시 시도하거나 다른 파일을 사용하세요.");
+  }
+  const times = extractionTimes(d);
   if (times.length > 600 &&
       !confirm(`${times.length}개 프레임을 추출합니다. 메모리를 많이 쓸 수 있어요. 계속?`)) return;
   const btn = $("extractBtn"); btn.disabled = true;
@@ -108,7 +141,7 @@ function thumbCanvas(src, h) {
     loadSepPreview(sepPreviewIndex);
   });
 });
-["sepMode", "sepForceBlack"].forEach((id) =>
+["sepMode", "sepForceBlack", "sepBackdrop"].forEach((id) =>
   $(id).addEventListener("input", () => loadSepPreview(sepPreviewIndex)));
 
 let sepPreviewIndex = 0;
@@ -116,8 +149,30 @@ function loadSepPreview(i) {
   if (!state.frames[i]) return;
   sepPreviewIndex = i;
   const src = state.frames[i].canvas;
+  const sep = separate(src, sepParams());
   drawInto($("sepBefore"), src);
-  drawInto($("sepAfter"), separate(src, sepParams()));
+  drawInto($("sepAfter"), sep);
+  updateSepBackdrop(sep);
+}
+
+/* show the transparent logo against a chosen backdrop so it's actually visible */
+function updateSepBackdrop(sep) {
+  const wrap = $("sepAfterWrap");
+  const mode = $("sepBackdrop").value;
+  wrap.classList.toggle("checker", mode === "checker");
+  if (mode === "checker") { wrap.style.background = ""; return; }
+  if (mode === "white") wrap.style.background = "#fff";
+  else if (mode === "black") wrap.style.background = "#000";
+  else wrap.style.background = meanLuma(sep) < 128 ? "#ffffff" : "#141414"; // contrast
+}
+
+function meanLuma(c) {
+  const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+  let sum = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] > 10) { sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; n++; }
+  }
+  return n ? sum / n : 255;
 }
 
 function sepParams() {
@@ -167,14 +222,16 @@ function drawInto(canvas, src) {
 }
 
 /* ---------- 4. backgrounds ---------- */
-$("bgInput").addEventListener("change", async (e) => {
-  for (const file of e.target.files) {
+async function addBackgrounds(files) {
+  for (const file of files) {
     const img = await loadImage(URL.createObjectURL(file));
     state.backgrounds.push(img);
   }
   renderBgList();
   buildManualAssign();
-});
+}
+$("bgInput").addEventListener("change", (e) => addBackgrounds(e.target.files));
+makeDrop("bgDrop", addBackgrounds);
 
 function loadImage(url) {
   return new Promise((res, rej) => {
@@ -304,20 +361,38 @@ function renderFrameToCanvas(i, content) {
   return c;
 }
 
-$("saveFramesBtn").addEventListener("click", async () => {
-  if (!state.frames.length) return alert("먼저 프레임을 추출하세요.");
-  const content = $("exportContent").value;
-  const width = String(state.frames.length).length;
+/* bundle N canvases into one ordered ZIP (used by steps 2, 3, 6) */
+async function saveZip(count, getCanvas, prefix, statusEl) {
+  if (!count) return alert("먼저 프레임을 준비하세요.");
+  const width = String(count).length;
   const zip = new JSZip();
-  for (let i = 0; i < state.frames.length; i++) {
-    const c = renderFrameToCanvas(i, content);
+  for (let i = 0; i < count; i++) {
+    const c = getCanvas(i);
+    if (!c) continue;
     const blob = await new Promise((r) => c.toBlob(r, "image/png"));
-    zip.file(`frame_${pad(i + 1, width)}.png`, blob);
-    $("exportStatus").textContent = `압축 중… ${i + 1}/${state.frames.length}`;
+    zip.file(`${prefix}_${pad(i + 1, width)}.png`, blob);
+    statusEl.textContent = `압축 중… ${i + 1}/${count}`;
   }
   const out = await zip.generateAsync({ type: "blob" });
-  downloadBlob(out, "frames.zip");
-  $("exportStatus").textContent = "ZIP 저장 완료";
+  downloadBlob(out, `${prefix}.zip`);
+  statusEl.textContent = `${prefix}.zip 저장 완료`;
+}
+
+// step 2: raw extracted frames
+$("saveRawBtn").addEventListener("click", () =>
+  saveZip(state.frames.length, (i) => state.frames[i].canvas, "frame", $("extractStatus")));
+
+// step 3: separated logos (apply first if needed)
+$("saveSepBtn").addEventListener("click", () => {
+  if (!state.separated.length) return alert('먼저 "모든 프레임에 적용"을 실행하세요.');
+  saveZip(state.separated.length, (i) => state.separated[i], "logo", $("sepStatus"));
+});
+
+// step 6: composite or logo-only
+$("saveFramesBtn").addEventListener("click", () => {
+  const content = $("exportContent").value;
+  saveZip(state.frames.length, (i) => renderFrameToCanvas(i, content),
+    content === "logo" ? "logo" : "composite", $("exportStatus"));
 });
 
 $("exportVideoBtn").addEventListener("click", () => {
@@ -362,8 +437,8 @@ function downloadBlob(blob, name) {
 }
 
 /* ---------- 7. re-import processed frames ---------- */
-$("processedInput").addEventListener("change", async (e) => {
-  const files = [...e.target.files].sort((a, b) =>
+async function loadProcessed(fileList) {
+  const files = [...fileList].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { numeric: true }));
   state.processed = [];
   for (const file of files) {
@@ -380,7 +455,9 @@ $("processedInput").addEventListener("change", async (e) => {
   });
   $("procStatus").textContent = `${state.processed.length}개 프레임 정렬 완료`;
   if (state.processed[0]) drawProcessed(0);
-});
+}
+$("processedInput").addEventListener("change", (e) => loadProcessed(e.target.files));
+makeDrop("processedDrop", loadProcessed);
 
 const pc = $("processedCanvas");
 let procTimer = null, procCur = 0;

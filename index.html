@@ -27,7 +27,10 @@
   <!-- 1. 업로드 -->
   <section id="s1" class="panel active">
     <h2>1. 로고 모션 영상 업로드</h2>
-    <input type="file" id="videoInput" accept="video/*">
+    <div class="drop" id="videoDrop">
+      <input type="file" id="videoInput" accept="video/*">
+      <span class="drophint">또는 여기로 영상을 드래그 앤 드롭</span>
+    </div>
     <video id="video" controls playsinline muted></video>
     <p id="videoMeta" class="meta"></p>
   </section>
@@ -48,6 +51,7 @@
       <input type="number" id="exSrcFps" value="30" min="1" max="120" step="1"> fps
     </div>
     <button id="extractBtn" class="primary">프레임 추출</button>
+    <button id="saveRawBtn" class="primary">추출 프레임 전체 ZIP 저장</button>
     <p id="extractStatus" class="meta"></p>
     <div id="frameStrip" class="strip"></div>
   </section>
@@ -75,18 +79,32 @@
     <div class="row">
       <label><input type="checkbox" id="sepForceBlack" checked> 로고를 순검정으로 정규화</label>
     </div>
+    <div class="row">
+      <label>결과 미리보기 배경
+        <select id="sepBackdrop">
+          <option value="contrast">로고 반대색 (권장)</option>
+          <option value="checker">투명 (체커)</option>
+          <option value="white">흰색</option>
+          <option value="black">검정</option>
+        </select>
+      </label>
+    </div>
     <div class="previewPair">
       <div><span class="cap">원본</span><canvas id="sepBefore"></canvas></div>
-      <div class="checker"><span class="cap">분리 결과 (투명)</span><canvas id="sepAfter"></canvas></div>
+      <div id="sepAfterWrap" class="checker"><span class="cap">분리 결과 (투명)</span><canvas id="sepAfter"></canvas></div>
     </div>
     <button id="applySepBtn" class="primary">모든 프레임에 적용</button>
+    <button id="saveSepBtn" class="primary">분리된 로고 전체 ZIP 저장</button>
     <p id="sepStatus" class="meta"></p>
   </section>
 
   <!-- 4. 배경 적용 -->
   <section id="s4" class="panel">
     <h2>4. 배경 이미지 적용</h2>
-    <input type="file" id="bgInput" accept="image/*" multiple>
+    <div class="drop" id="bgDrop">
+      <input type="file" id="bgInput" accept="image/*" multiple>
+      <span class="drophint">또는 여기로 배경 이미지들을 드래그 앤 드롭</span>
+    </div>
     <div id="bgList" class="strip"></div>
     <div class="row">
       <label>배치 방식
@@ -135,7 +153,10 @@
   <section id="s7" class="panel">
     <h2>7. 외부 가공 프레임 재조합</h2>
     <p class="meta">파일명 순서(자연 정렬)로 자동 배열됩니다. 예: frame_0001.png … frame_0002.png</p>
-    <input type="file" id="processedInput" accept="image/*" multiple>
+    <div class="drop" id="processedDrop">
+      <input type="file" id="processedInput" accept="image/*" multiple>
+      <span class="drophint">또는 여기로 가공 프레임들을 드래그 앤 드롭</span>
+    </div>
     <div id="processedStrip" class="strip"></div>
     <canvas id="processedCanvas"></canvas>
     <div class="row controls">

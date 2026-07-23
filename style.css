@@ -59,6 +59,15 @@ input[type=number], select {
 input[type=number] { width: 84px; }
 input[type=number]:focus, select:focus { outline: none; border-color: var(--accent); }
 input[type=range] { accent-color: var(--accent); height: 4px; }
+.drop {
+  border: 2px dashed var(--line); border-radius: 16px;
+  padding: 20px; margin-bottom: 16px; transition: all .12s;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.drop.over { border-color: var(--accent); background: var(--accent-weak); }
+.drophint { color: var(--muted); font-size: 14px; }
+.drop input[type=file] { margin-bottom: 0; }
+
 input[type=file] {
   margin-bottom: 16px; color: var(--sub); font-size: 14px;
 }
@@ -99,6 +108,8 @@ video, canvas { max-width: 100%; background: #000; border-radius: 16px; display:
 .previewPair { display: flex; gap: 20px; flex-wrap: wrap; margin: 16px 0; }
 .previewPair > div { flex: 1 1 320px; }
 .previewPair canvas { width: 100%; max-height: 44vh; object-fit: contain; }
+#sepAfter { background: transparent; }
+#sepAfterWrap { transition: background .12s; }
 .checker {
   background-image:
     linear-gradient(45deg, #e5e8eb 25%, transparent 25%),

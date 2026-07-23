@@ -9,7 +9,6 @@
 <body>
 <header>
   <h1>Logo Match Cut Studio</h1>
-  <p class="sub">업로드 → 프레임 추출 → 로고 분리 → 배경 적용 → 미리보기 → 내보내기</p>
 </header>
 
 <!-- 진행 단계 -->
@@ -38,20 +37,27 @@
   <!-- 2. 프레임 추출 -->
   <section id="s2" class="panel">
     <h2>2. 프레임 추출</h2>
+    <div class="hint">
+      💡 <b>프레임 수 조절 팁</b><br>
+      · <b>프레임을 적게</b> 뽑으려면 → FPS를 <b>낮추세요</b> (예: 6~8fps). 용량·작업량이 줄어듭니다.<br>
+      · <b>움직임을 부드럽게</b> 하려면 → FPS를 <b>높이세요</b> (예: 24~30fps). 프레임이 많아집니다.<br>
+      · <b>일정 간격</b>은 숫자가 <b>클수록 적게</b> 뽑힙니다 (0.5초마다 = 1초에 2장).<br>
+      · <b>전체 프레임</b>은 원본에 가장 가깝게(가장 많이) 뽑습니다.
+    </div>
     <div class="row">
       <label><input type="radio" name="exMode" value="fps" checked> 지정 FPS로 추출</label>
       <input type="number" id="exFps" value="12" min="1" max="60" step="1"> fps
     </div>
     <div class="row">
       <label><input type="radio" name="exMode" value="interval"> 일정 간격</label>
-      <input type="number" id="exInterval" value="0.5" min="0.02" step="0.1"> 초마다
+      <input type="number" id="exInterval" value="0.5" min="0.02" step="0.1" disabled> 초마다
     </div>
     <div class="row">
       <label><input type="radio" name="exMode" value="all"> 전체 프레임 (원본 FPS 지정)</label>
-      <input type="number" id="exSrcFps" value="30" min="1" max="120" step="1"> fps
+      <input type="number" id="exSrcFps" value="30" min="1" max="120" step="1" disabled> fps
     </div>
-    <button id="extractBtn" class="primary">프레임 추출</button>
-    <button id="saveRawBtn" class="primary">추출 프레임 전체 ZIP 저장</button>
+    <button id="extractBtn" class="primary" disabled>프레임 추출</button>
+    <button id="saveRawBtn" class="primary" disabled>추출 프레임 전체 ZIP 저장</button>
     <p id="extractStatus" class="meta"></p>
     <div id="frameStrip" class="strip"></div>
   </section>
@@ -93,8 +99,8 @@
       <div><span class="cap">원본</span><canvas id="sepBefore"></canvas></div>
       <div id="sepAfterWrap" class="checker"><span class="cap">분리 결과 (투명)</span><canvas id="sepAfter"></canvas></div>
     </div>
-    <button id="applySepBtn" class="primary">모든 프레임에 적용</button>
-    <button id="saveSepBtn" class="primary">분리된 로고 전체 ZIP 저장</button>
+    <button id="applySepBtn" class="primary" disabled>모든 프레임에 적용</button>
+    <button id="saveSepBtn" class="primary" disabled>분리된 로고 전체 ZIP 저장</button>
     <p id="sepStatus" class="meta"></p>
   </section>
 
@@ -125,7 +131,7 @@
     <h2>5. 합성 미리보기</h2>
     <canvas id="previewCanvas"></canvas>
     <div class="row controls">
-      <button id="playBtn" class="primary">▶ 재생</button>
+      <button id="playBtn" class="primary" disabled>▶ 재생</button>
       <label>재생 FPS <input type="number" id="playFps" value="12" min="1" max="60"></label>
       <label>배경 전환 간격 <input type="number" id="bgSwitch" value="8" min="1"> 프레임</label>
       <span id="frameCounter" class="meta"></span>
@@ -144,8 +150,8 @@
         </select>
       </label>
     </div>
-    <button id="saveFramesBtn" class="primary">프레임 일괄 저장 (ZIP)</button>
-    <button id="exportVideoBtn" class="primary">영상으로 내보내기 (WebM)</button>
+    <button id="saveFramesBtn" class="primary" disabled>프레임 일괄 저장 (ZIP)</button>
+    <button id="exportVideoBtn" class="primary" disabled>영상으로 내보내기 (WebM)</button>
     <p id="exportStatus" class="meta"></p>
   </section>
 
@@ -160,9 +166,9 @@
     <div id="processedStrip" class="strip"></div>
     <canvas id="processedCanvas"></canvas>
     <div class="row controls">
-      <button id="playProcessedBtn" class="primary">▶ 재생</button>
+      <button id="playProcessedBtn" class="primary" disabled>▶ 재생</button>
       <label>재생 FPS <input type="number" id="procFps" value="12" min="1" max="60"></label>
-      <button id="exportProcessedBtn" class="primary">영상으로 내보내기 (WebM)</button>
+      <button id="exportProcessedBtn" class="primary" disabled>영상으로 내보내기 (WebM)</button>
     </div>
     <p id="procStatus" class="meta"></p>
   </section>

@@ -11,8 +11,8 @@
   --bg: #f2f4f6;
   --card: #ffffff;
   --line: #e5e8eb;
-  --accent: #3182f6;
-  --accent-weak: #e8f1ff;
+  --accent: #FA3030;
+  --accent-weak: #ffeaea;
   --text: #191f28;
   --sub: #4e5968;
   --muted: #8b95a1;
@@ -41,6 +41,16 @@ header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02e
 }
 .step:hover { background: #e9edf2; }
 .step.active { color: #fff; background: var(--accent); }
+/* guidance: pulse the next tab the user should visit */
+.step.guide {
+  color: var(--accent); background: var(--card);
+  animation: guidePulse 1.25s ease-in-out infinite;
+}
+.step.guide.active { animation: none; }
+@keyframes guidePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(250, 48, 48, .55); }
+  60% { box-shadow: 0 0 0 7px rgba(250, 48, 48, 0); }
+}
 
 main { padding: 12px 24px 100px; max-width: 1200px; margin: 0 auto; }
 .panel { display: none; }
@@ -95,6 +105,12 @@ video, canvas { max-width: 100%; background: #000; border-radius: 16px; display:
   width: 100%; max-height: 72vh; object-fit: contain; margin: 12px 0; background: #000;
 }
 
+.hint {
+  background: var(--accent-weak); color: var(--sub);
+  border-radius: 12px; padding: 16px 18px; font-size: 14px; line-height: 1.7;
+  margin-bottom: 24px;
+}
+.hint b { color: var(--text); font-weight: 600; }
 .meta { color: var(--muted); font-size: 14px; }
 .cap { display: block; color: var(--muted); font-size: 13px; margin-bottom: 6px; font-weight: 500; }
 

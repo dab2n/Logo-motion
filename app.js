@@ -20,7 +20,16 @@ function showStep(id, btn) {
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
   document.querySelectorAll(".step").forEach((b) => b.classList.remove("active"));
   $(id).classList.add("active");
-  (btn || document.querySelector(`[data-go="${id}"]`)).classList.add("active");
+  const tab = btn || document.querySelector(`[data-go="${id}"]`);
+  tab.classList.add("active");
+  tab.classList.remove("guide"); // visiting the tab clears its "go here next" hint
+}
+
+/* pulse the next tab so non-experts know where to go after finishing a step */
+function guideTo(step) {
+  document.querySelectorAll(".step.guide").forEach((s) => s.classList.remove("guide"));
+  const t = document.querySelector(`[data-go="${step}"]`);
+  if (t && !t.classList.contains("active")) t.classList.add("guide");
 }
 
 /* drag & drop: forward dropped files to the same handler as the input */
@@ -44,9 +53,22 @@ function loadVideoFile(file) {
     $("videoMeta").textContent =
       `${video.videoWidth}×${video.videoHeight}px · ${video.duration.toFixed(2)}s`;
   };
+  $("extractBtn").disabled = false;
+  guideTo("s2");
 }
 $("videoInput").addEventListener("change", (e) => loadVideoFile(e.target.files[0]));
 makeDrop("videoDrop", (files) => loadVideoFile(files[0]));
+
+/* frame-extraction mode: only the selected mode's value input is editable */
+function syncExMode() {
+  const mode = document.querySelector('input[name="exMode"]:checked').value;
+  $("exFps").disabled = mode !== "fps";
+  $("exInterval").disabled = mode !== "interval";
+  $("exSrcFps").disabled = mode !== "all";
+}
+document.querySelectorAll('input[name="exMode"]').forEach((r) =>
+  r.addEventListener("change", syncExMode));
+syncExMode();
 
 /* ---------- 2. frame extraction ---------- */
 function seek(t) {
@@ -111,6 +133,11 @@ $("extractBtn").addEventListener("click", async () => {
   loadSepPreview(0);
   buildManualAssign();
   syncScrub();
+  if (state.frames.length) {
+    ["saveRawBtn", "applySepBtn", "playBtn", "saveFramesBtn", "exportVideoBtn"]
+      .forEach((id) => { $(id).disabled = false; });
+    guideTo("s3");
+  }
 });
 
 function renderStrip() {
@@ -212,7 +239,9 @@ $("applySepBtn").addEventListener("click", () => {
   const p = sepParams();
   state.separated = state.frames.map((f) => separate(f.canvas, p));
   $("sepStatus").textContent = `${state.separated.length}개 프레임 분리 완료`;
+  $("saveSepBtn").disabled = false;
   syncScrub();
+  guideTo("s4");
 });
 
 function drawInto(canvas, src) {
@@ -229,6 +258,7 @@ async function addBackgrounds(files) {
   }
   renderBgList();
   buildManualAssign();
+  if (state.backgrounds.length) guideTo("s5");
 }
 $("bgInput").addEventListener("change", (e) => addBackgrounds(e.target.files));
 makeDrop("bgDrop", addBackgrounds);
@@ -454,7 +484,11 @@ async function loadProcessed(fileList) {
     strip.appendChild(t);
   });
   $("procStatus").textContent = `${state.processed.length}개 프레임 정렬 완료`;
-  if (state.processed[0]) drawProcessed(0);
+  if (state.processed[0]) {
+    drawProcessed(0);
+    $("playProcessedBtn").disabled = false;
+    $("exportProcessedBtn").disabled = false;
+  }
 }
 $("processedInput").addEventListener("change", (e) => loadProcessed(e.target.files));
 makeDrop("processedDrop", loadProcessed);

@@ -165,3 +165,30 @@ input[type=color] {
   width: 40px; height: 34px; padding: 2px; border: 1px solid var(--line);
   border-radius: 8px; background: #fff; cursor: pointer;
 }
+
+/* ---------- mobile ---------- */
+@media (max-width: 640px) {
+  header { padding: 18px 16px 6px; }
+  header h1 { font-size: 20px; }
+  /* keep the 7 steps on one scrollable row instead of stacking into many lines */
+  #steps {
+    padding: 10px 16px; gap: 6px;
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .step { flex: 0 0 auto; padding: 8px 13px; font-size: 13px; }
+  main { padding: 8px 16px 72px; }
+  .panel.active { padding: 20px 16px; border-radius: 16px; }
+  h2 { font-size: 17px; margin-bottom: 18px; }
+
+  .row { gap: 8px 10px; }
+  .row label { max-width: 100%; }
+  .row input[type=range] { flex: 1 1 130px; min-width: 110px; }
+  select { max-width: 100%; }
+  .drop { flex-direction: column; align-items: flex-start; }
+
+  #video { max-height: 46vh; }
+  #previewCanvas, #processedCanvas { max-height: 56vh; }
+  .previewPair { gap: 12px; }
+  .previewPair > div { flex: 1 1 100%; }
+  .hint { padding: 13px 14px; font-size: 13px; }
+}

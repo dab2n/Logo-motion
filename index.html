@@ -47,6 +47,12 @@
         <span class="mc-desc">영상 없이, 로고 이미지 한 장을 올려 배경만 빠르게 전환하며 영상으로 만듭니다.</span>
         <span class="mc-flow">로고 업로드 · 배경 · 미리보기 · 내보내기</span>
       </button>
+      <button class="modeCard" data-mode="seq">
+        <span class="mc-emoji">🎞️</span>
+        <span class="mc-title">이미지 이어붙여 영상</span>
+        <span class="mc-desc">배경 분리 없이, 여러 이미지를 파일명 순서대로 이어붙여 바로 영상으로 만듭니다.</span>
+        <span class="mc-flow">이미지 업로드 · 재생 · 내보내기</span>
+      </button>
     </div>
   </section>
 
@@ -283,17 +289,20 @@
 
   <!-- 7. 가공본 재조합 -->
   <section id="s7" class="panel">
-    <h2>외부 가공 프레임 재조합</h2>
-    <p class="meta">파일명 순서(자연 정렬)로 자동 배열됩니다. 예: frame_0001.png … frame_0002.png</p>
+    <h2 id="s7Title">외부 가공 프레임 재조합</h2>
+    <p class="meta">파일명 순서(자연 정렬)로 자동 배열됩니다. 예: frame_0001.png … frame_0002.png<br>
+      크기가 제각각이면 첫 이미지 크기에 맞춰 꽉 차게(cover) 잘립니다.</p>
     <div class="drop" id="processedDrop">
       <input type="file" id="processedInput" accept="image/*" multiple>
-      <span class="drophint">또는 여기로 가공 프레임들을 드래그 앤 드롭</span>
+      <span class="drophint">또는 여기로 이미지들을 드래그 앤 드롭</span>
     </div>
     <div id="processedStrip" class="strip"></div>
     <canvas id="processedCanvas"></canvas>
     <div class="row controls">
       <button id="playProcessedBtn" class="primary" disabled>▶ 재생</button>
       <label>재생 FPS <input type="number" id="procFps" value="12" min="1" max="60"></label>
+      <label>장당 표시 시간 <input type="number" id="procHold" value="0" min="0" step="0.1"> 초</label>
+      <span class="meta">0 = 한 장에 1프레임</span>
       <button id="exportProcessedBtn" class="primary" disabled>영상으로 내보내기 (WebM)</button>
     </div>
     <p id="procStatus" class="meta"></p>

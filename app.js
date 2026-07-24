@@ -18,17 +18,22 @@ const MODE_STEPS = {
   full:   ["s1", "s3", "s4", "s5", "s6", "s7"], // 영상·추출→분리→배경→미리보기→내보내기
   logo:   ["s1", "s3", "s5", "s6"],             // 배경 없이 투명 로고 모션만
   static: ["s1b", "s4", "s5", "s6"],                  // 정적 로고 한 장 + 배경 전환
+  seq:    ["s7"],                               // 분리 없이 이미지 여러 장 → 영상 (s7 재사용)
 };
 let mode = null;
 
 function applyMode(m) {
   mode = m;
   const steps = MODE_STEPS[m];
+  const seq = m === "seq"; // 같은 s7 패널을 '이미지 이어붙이기'용으로도 씀
   document.querySelectorAll(".step[data-go]").forEach((b) => {
     const i = steps.indexOf(b.dataset.go);
     b.hidden = i < 0;
-    if (i >= 0) b.textContent = `${i + 1} · ${b.dataset.label}`;
+    const label = seq && b.dataset.go === "s7" ? "이미지 이어붙이기" : b.dataset.label;
+    if (i >= 0) b.textContent = `${i + 1} · ${label}`;
   });
+  $("s7Title").textContent = seq ? "이미지 이어붙여 영상 만들기" : "외부 가공 프레임 재조합";
+  $("procHold").value = seq ? 1 : 0; // 슬라이드쇼는 장당 1초, 재조합은 프레임당 1장
   $("steps").hidden = false;
   $("exportContent").value = m === "logo" ? "logo" : "composite"; // 배경제거 모드 기본값
   showStep(steps[0]);
@@ -729,7 +734,13 @@ function procSize() {
 function drawProcessed(i) {
   const { W, H } = procSize();
   pc.width = W; pc.height = H;
-  pc.getContext("2d").drawImage(state.processed[i].img, 0, 0, W, H);
+  drawCover(pc.getContext("2d"), state.processed[i].img, W, H); // 크기 제각각이어도 안 찌그러짐
+}
+
+/* 한 장을 몇 프레임 유지할지. 0초면 원본 그대로 프레임당 한 장 */
+function procHold(fps) {
+  const sec = Number($("procHold").value) || 0;
+  return sec > 0 ? Math.max(1, Math.round(sec * fps)) : 1;
 }
 
 $("playProcessedBtn").addEventListener("click", () => {
@@ -739,18 +750,21 @@ $("playProcessedBtn").addEventListener("click", () => {
   }
   if (!state.processed.length) return alert("먼저 가공 프레임을 업로드하세요.");
   const fps = Number($("procFps").value);
+  const hold = procHold(fps), total = state.processed.length * hold;
   $("playProcessedBtn").textContent = "⏸ 정지";
+  procCur = 0;
   procTimer = setInterval(() => {
-    drawProcessed(procCur);
-    procCur = (procCur + 1) % state.processed.length;
+    drawProcessed(Math.floor(procCur / hold));
+    procCur = (procCur + 1) % total;
   }, 1000 / fps);
 });
 
 $("exportProcessedBtn").addEventListener("click", () => {
   if (!state.processed.length) return alert("먼저 가공 프레임을 업로드하세요.");
   const fps = Number($("procFps").value);
-  recordFrames(state.processed.length, fps,
-    (ctx, i, W, H) => ctx.drawImage(state.processed[i].img, 0, 0, W, H),
+  const hold = procHold(fps);
+  recordFrames(state.processed.length * hold, fps,
+    (ctx, j, W, H) => drawCover(ctx, state.processed[Math.floor(j / hold)].img, W, H),
     procSize(), $("procStatus"), "final-match-cut.webm", BITRATE[$("exportQuality").value]);
 });
 

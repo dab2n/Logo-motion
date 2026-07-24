@@ -443,7 +443,11 @@ function drawLogoOn(ctx, i, W, H) {
   const lw = logo.width * base * s, lh = logo.height * base * s;
   const x = AX[align.h] * (W - lw) + (Number($("logoX").value) || 0) / 100 * W;
   const y = AY[align.v] * (H - lh) + (Number($("logoY").value) || 0) / 100 * H;
+  ctx.save(); // 투명도 · 합성 효과(overlay/screen 등)는 로고에만 적용
+  ctx.globalAlpha = (Number($("logoOpacity").value) || 0) / 100;
+  ctx.globalCompositeOperation = $("logoBlend").value;
   ctx.drawImage(paintLogo(logo, i), x, y, lw, lh);
+  ctx.restore();
 }
 
 /* recolor the separated logo (alpha matte) to the chosen or auto-contrast color */
@@ -492,7 +496,8 @@ function frameSize() {
   const a = $("aspect") ? $("aspect").value : "orig";
   const ratio = a === "orig" ? bw / bh : (() => { const [rw, rh] = a.split(":").map(Number); return rw / rh; })();
   const res = $("exportRes") ? $("exportRes").value : "orig";
-  const H = res === "orig" ? bh : Number(res);
+  // A1(594×841mm) @150dpi: 짧은 변 3508 / 긴 변 4967. 세로·가로 방향에 맞춰 높이를 고름
+  const H = res === "orig" ? bh : res === "a1" ? (ratio > 1 ? 3508 : 4967) : Number(res);
   const even = (n) => 2 * Math.round(n / 2);
   return { W: even(H * ratio), H: even(H) };
 }
@@ -751,9 +756,10 @@ $("exportProcessedBtn").addEventListener("click", () => {
 });
 
 /* ---------- layout controls (aspect / logo size & position) ---------- */
-["aspect", "logoScale", "logoX", "logoY"].forEach((id) =>
+["aspect", "logoScale", "logoX", "logoY", "logoOpacity", "logoBlend"].forEach((id) =>
   $(id).addEventListener("input", () => {
     $("logoScaleVal").textContent = $("logoScale").value + "%";
+    $("logoOpacityVal").textContent = $("logoOpacity").value + "%";
     if (id === "aspect") updateExportInfo();
     if (state.frames.length) drawPreview(cur);
   }));
@@ -788,7 +794,8 @@ function updateExportInfo() {
   const dur = Number($("exportDuration").value) || 0;
   const count = total ? (dur > 0 ? Math.round(dur * fps) : total) : 0;
   $("exportInfo").textContent =
-    `출력 ${W}×${H}px · ${mbps}Mbps · ${count}프레임 · 약 ${(count / fps).toFixed(1)}초`;
+    `출력 ${W}×${H}px · ${mbps}Mbps · ${count}프레임 · 약 ${(count / fps).toFixed(1)}초` +
+    (H > 2400 ? " · ⚠ 인쇄용 대형 — 영상보다 프레임 ZIP(PNG) 권장" : "");
   $("transparentNote").hidden = $("exportContent").value !== "logo"; // WebM can't do alpha
 }
 ["exportRes", "exportQuality", "exportDuration", "playFps", "exportContent"].forEach((id) => {

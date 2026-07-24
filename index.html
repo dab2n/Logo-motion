@@ -183,10 +183,28 @@
           <option value="9:16">9:16 (세로)</option>
           <option value="1:1">1:1 (정사각)</option>
           <option value="4:5">4:5 (인스타)</option>
+          <option value="594:841">A1 세로 (594×841mm)</option>
+          <option value="841:594">A1 가로 (841×594mm)</option>
         </select>
       </label>
       <label>로고 크기 <input type="range" id="logoScale" min="10" max="200" value="100"></label>
       <span id="logoScaleVal">100%</span>
+    </div>
+    <div class="row">
+      <label>로고 투명도 <input type="range" id="logoOpacity" min="0" max="100" value="100"></label>
+      <span id="logoOpacityVal">100%</span>
+      <label>합성 효과
+        <select id="logoBlend">
+          <option value="source-over">기본 (Normal)</option>
+          <option value="multiply">Multiply (곱하기)</option>
+          <option value="screen">Screen (스크린)</option>
+          <option value="overlay">Overlay (오버레이)</option>
+          <option value="soft-light">Soft Light</option>
+          <option value="hard-light">Hard Light</option>
+          <option value="difference">Difference</option>
+          <option value="luminosity">Luminosity</option>
+        </select>
+      </label>
     </div>
     <div class="row">
       <label>로고 정렬</label>
@@ -243,6 +261,7 @@
           <option value="1080" selected>1080p (HD)</option>
           <option value="1440">1440p (2K)</option>
           <option value="2160">2160p (4K)</option>
+          <option value="a1">A1 인쇄용 (150dpi)</option>
         </select>
       </label>
       <label>화질(비트레이트)

@@ -14,9 +14,8 @@
 <!-- 진행 단계 (모드 선택 후 표시) -->
 <nav id="steps" hidden>
   <button id="backToModes" class="step back" title="다른 방식 선택">← 처음</button>
-  <button class="step" data-go="s1"  data-label="업로드"></button>
+  <button class="step" data-go="s1"  data-label="업로드 · 추출"></button>
   <button class="step" data-go="s1b" data-label="로고 업로드"></button>
-  <button class="step" data-go="s2"  data-label="프레임 추출"></button>
   <button class="step" data-go="s3"  data-label="로고 분리"></button>
   <button class="step" data-go="s4"  data-label="배경 적용"></button>
   <button class="step" data-go="s5"  data-label="미리보기"></button>
@@ -34,13 +33,13 @@
         <span class="mc-emoji">🎬</span>
         <span class="mc-title">로고 매치컷 (전체)</span>
         <span class="mc-desc">모션 영상을 프레임으로 나누고, 로고를 분리해 프레임마다 다른 배경을 합성합니다.</span>
-        <span class="mc-flow">영상 · 추출 · 분리 · 배경 · 미리보기 · 내보내기</span>
+        <span class="mc-flow">영상+추출 · 분리 · 배경 · 미리보기 · 내보내기</span>
       </button>
       <button class="modeCard" data-mode="logo">
         <span class="mc-emoji">✂️</span>
         <span class="mc-title">배경 제거만 · 투명 로고 모션</span>
         <span class="mc-desc">배경을 붙이지 않고, 원본 영상에서 흰 배경만 지운 투명 로고 모션 영상을 만듭니다.</span>
-        <span class="mc-flow">영상 · 추출 · 분리 · 미리보기 · 내보내기</span>
+        <span class="mc-flow">영상+추출 · 분리 · 미리보기 · 내보내기</span>
       </button>
       <button class="modeCard" data-mode="static">
         <span class="mc-emoji">🖼️</span>
@@ -51,34 +50,16 @@
     </div>
   </section>
 
-  <!-- 1. 업로드 -->
+  <!-- 1. 영상 업로드 + 프레임 추출 (한 단계) -->
   <section id="s1" class="panel">
-    <h2>로고 모션 영상 업로드</h2>
+    <h2>영상 업로드 · 프레임 추출</h2>
     <div class="drop" id="videoDrop">
       <input type="file" id="videoInput" accept="video/*">
       <span class="drophint">또는 여기로 영상을 드래그 앤 드롭</span>
     </div>
     <video id="video" controls playsinline muted></video>
     <p id="videoMeta" class="meta"></p>
-  </section>
 
-  <!-- 1b. 정적 로고 업로드 (static 모드) -->
-  <section id="s1b" class="panel">
-    <h2>로고 이미지 업로드</h2>
-    <div class="hint">
-      배경이 <b>투명한 PNG</b> 로고를 권장합니다. 흰 배경 이미지를 올리면 흰 배경을 <b>자동으로 제거</b>해 드려요.
-    </div>
-    <div class="drop" id="logoImgDrop">
-      <input type="file" id="logoImgInput" accept="image/*">
-      <span class="drophint">또는 여기로 로고 이미지를 드래그 앤 드롭</span>
-    </div>
-    <div class="checker" id="staticLogoWrap"><canvas id="staticLogoPreview"></canvas></div>
-    <p id="logoImgMeta" class="meta"></p>
-  </section>
-
-  <!-- 2. 프레임 추출 -->
-  <section id="s2" class="panel">
-    <h2>프레임 추출</h2>
     <div class="hint">
       💡 <b>프레임 수 조절 팁</b><br>
       · <b>프레임을 적게</b> 뽑으려면 → FPS를 <b>낮추세요</b> (예: 6~8fps). 용량·작업량이 줄어듭니다.<br>
@@ -104,7 +85,21 @@
     <div id="frameStrip" class="strip"></div>
   </section>
 
-  <!-- 3. 로고 분리 -->
+  <!-- 1b. 정적 로고 업로드 (static 모드) -->
+  <section id="s1b" class="panel">
+    <h2>로고 이미지 업로드</h2>
+    <div class="hint">
+      배경이 <b>투명한 PNG</b> 로고를 권장합니다. 흰 배경 이미지를 올리면 흰 배경을 <b>자동으로 제거</b>해 드려요.
+    </div>
+    <div class="drop" id="logoImgDrop">
+      <input type="file" id="logoImgInput" accept="image/*">
+      <span class="drophint">또는 여기로 로고 이미지를 드래그 앤 드롭</span>
+    </div>
+    <div class="checker" id="staticLogoWrap"><canvas id="staticLogoPreview"></canvas></div>
+    <p id="logoImgMeta" class="meta"></p>
+  </section>
+
+  <!-- 2. 로고 분리 -->
   <section id="s3" class="panel">
     <h2>흰 배경 제거 / 로고 분리</h2>
     <div class="row">
@@ -164,7 +159,7 @@
       </label>
     </div>
     <div id="manualAssign" class="strip" hidden></div>
-    <p class="meta">배경은 화면을 덮도록(cover) 스케일됩니다 — 비율이 안 맞으면 가장자리가 잘립니다. 실제 합성 결과와 전환 간격은 <b>5단계 미리보기</b>에서 확인·조절하세요.</p>
+    <p class="meta">배경은 화면을 덮도록(cover) 스케일됩니다 — 비율이 안 맞으면 가장자리가 잘립니다. 실제 합성 결과와 전환 간격은 <b>미리보기 단계</b>에서 확인·조절하세요.</p>
   </section>
 
   <!-- 5. 미리보기 -->
@@ -172,8 +167,8 @@
     <h2>합성 미리보기 · 레이아웃</h2>
     <div class="hint">
       💡 <b>재생 FPS</b> — 1초에 몇 장을 보여줄지 정합니다. <b>높이면</b> 영상이 빠르고 부드럽게, <b>낮추면</b> 느리고 뚝뚝 끊기게 재생됩니다. 내보내는 영상 속도에도 그대로 반영됩니다.<br>
-      💡 <b>배경 전환 간격</b> — 배경을 <b>몇 프레임마다</b> 바꿀지 정합니다. <b>작을수록</b> 배경이 자주 바뀌어 빠른 매치컷이 되고, <b>클수록</b> 한 배경이 오래 유지됩니다. (4단계 '순서대로 자동 배치'에 적용)<br>
-      🎬 <b>배경이 바뀔 때마다 로고 컷도 넘기고 싶다면</b> → 배경 전환 간격을 <b>1</b>로 두세요. 매 프레임마다 배경이 바뀌어 로고 움직임과 배경 전환이 딱 맞아떨어집니다. (2단계에서 프레임을 적게 뽑고, 그 수만큼 배경을 준비하면 <b>한 컷 = 한 배경</b>이 됩니다.)
+      💡 <b>배경 전환 간격</b> — 배경을 <b>몇 프레임마다</b> 바꿀지 정합니다. <b>작을수록</b> 배경이 자주 바뀌어 빠른 매치컷이 되고, <b>클수록</b> 한 배경이 오래 유지됩니다. ('배경 적용' 단계의 '순서대로 자동 배치'에 적용)<br>
+      🎬 <b>배경이 바뀔 때마다 로고 컷도 넘기고 싶다면</b> → 배경 전환 간격을 <b>1</b>로 두세요. 매 프레임마다 배경이 바뀌어 로고 움직임과 배경 전환이 딱 맞아떨어집니다. (‘업로드 · 추출’ 단계에서 프레임을 적게 뽑고, 그 수만큼 배경을 준비하면 <b>한 컷 = 한 배경</b>이 됩니다.)
     </div>
     <div class="row">
       <label>화면 비율
@@ -232,7 +227,7 @@
         </select>
       </label>
       <input type="color" id="logoColorPick" value="#000000" hidden>
-      <span class="meta">※ 색상 변경은 3단계에서 로고를 분리해야 적용됩니다.</span>
+      <span class="meta">※ 색상 변경은 ‘로고 분리’ 단계에서 로고를 분리해야 적용됩니다.</span>
     </div>
     <canvas id="previewCanvas"></canvas>
     <div class="row controls">

@@ -15,8 +15,8 @@ const state = {
 
 /* ---------- mode selection: show only the steps a given goal needs ---------- */
 const MODE_STEPS = {
-  full:   ["s1", "s2", "s3", "s4", "s5", "s6", "s7"], // 영상→추출→분리→배경→미리보기→내보내기
-  logo:   ["s1", "s2", "s3", "s5", "s6"],             // 배경 없이 투명 로고 모션만
+  full:   ["s1", "s3", "s4", "s5", "s6", "s7"], // 영상·추출→분리→배경→미리보기→내보내기
+  logo:   ["s1", "s3", "s5", "s6"],             // 배경 없이 투명 로고 모션만
   static: ["s1b", "s4", "s5", "s6"],                  // 정적 로고 한 장 + 배경 전환
 };
 let mode = null;
@@ -95,8 +95,7 @@ function loadVideoFile(file) {
     $("videoMeta").textContent =
       `${video.videoWidth}×${video.videoHeight}px · ${video.duration.toFixed(2)}s`;
   };
-  $("extractBtn").disabled = false;
-  guideTo("s2");
+  $("extractBtn").disabled = false; // 추출 버튼이 같은 단계 안에 있으므로 탭 안내 불필요
 }
 $("videoInput").addEventListener("change", (e) => loadVideoFile(e.target.files[0]));
 makeDrop("videoDrop", (files) => loadVideoFile(files[0]));
